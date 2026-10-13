@@ -1,0 +1,161 @@
+name: Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: v0.0.0
+        required: false
+        type: string
+  release:
+    types: [published]
+  push:
+    branches: [main, master]
+    paths-ignore: ['**.md']
+
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'release' }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.distribution }}
+    strategy:
+      fail-fast: false
+      matrix:
+        distribution: [direct, play]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      HONGSI_API_URL: ${{ secrets.HONGSI_API_URL }}
+      HONGSI_REPO_URL: ${{ secrets.HONGSI_REPO_URL }}
+      HONGSI_SUPPORT_URL: ${{ secrets.HONGSI_SUPPORT_URL }}
+      HONGSI_DEMO_URL: ${{ secrets.HONGSI_DEMO_URL }}
+      HONGSI_SCHOOL_URL: ${{ secrets.HONGSI_SCHOOL_URL }}
+      HONGSI_SSO_URL: ${{ secrets.HONGSI_SSO_URL }}
+      HONGSI_PORTAL_URL: ${{ secrets.HONGSI_PORTAL_URL }}
+      HONGSI_CLASSROOM_URL: ${{ secrets.HONGSI_CLASSROOM_URL }}
+      HONGSI_ATTENDANCE_URL: ${{ secrets.HONGSI_ATTENDANCE_URL }}
+      HONGSI_CLASSNET_URL: ${{ secrets.HONGSI_CLASSNET_URL }}
+      HONGSI_FOOD_URL: ${{ secrets.HONGSI_FOOD_URL }}
+      HONGSI_SEAT_G_URL: ${{ secrets.HONGSI_SEAT_G_URL }}
+      HONGSI_SEAT_T_URL: ${{ secrets.HONGSI_SEAT_T_URL }}
+      HONGSI_SEAT_R_URL: ${{ secrets.HONGSI_SEAT_R_URL }}
+      HONGSI_STUDENT_CARD_URL: ${{ secrets.HONGSI_STUDENT_CARD_URL }}
+      HONGSI_FCM_URL: ${{ secrets.HONGSI_FCM_URL }}
+      HONGSI_FCM_TOKEN_URL: ${{ secrets.HONGSI_FCM_TOKEN_URL }}
+      HONGSI_FCM_SCOPE: ${{ secrets.HONGSI_FCM_SCOPE }}
+      HONGSI_APNS_URL: ${{ secrets.HONGSI_APNS_URL }}
+      HONGSI_APNS_SANDBOX_URL: ${{ secrets.HONGSI_APNS_SANDBOX_URL }}
+      HAS_SIGNING: ${{ secrets.ANDROID_KEY_BASE64 != '' }}
+      HONGSI_ANDROID_DISTRIBUTION: ${{ matrix.distribution }}
+      RELEASE_PRERELEASE: ${{ github.event.release.prerelease && 'true' || 'false' }}
+      BUILD_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Validate build configuration
+        run: node scripts/public-env.mjs --check-build
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: app/package.json
+          cache: true
+          cache_dependency_path: app/pnpm-lock.yaml
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v6
+      - uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: '15859902'
+          packages: platform-tools
+      - name: SDK and NDK
+        run: |
+          sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'ndk;29.0.14206865'
+          echo "NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: android-aarch64-${{ matrix.distribution }}
+          cache-on-failure: true
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - name: Set release version
+        run: node scripts/set-release-version.mjs "$BUILD_VERSION"
+      - name: Restore Firebase and signing files
+        env:
+          FIREBASE_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+          KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          RELEASE_EVENT: ${{ github.event_name }}
+        run: node scripts/prepare-android-build.mjs
+      - name: Signed APK for direct download
+        if: env.HAS_SIGNING == 'true' && matrix.distribution == 'direct'
+        run: pnpm tauri android build --target aarch64 --apk --ci
+      - name: Signed AAB for Google Play
+        if: env.HAS_SIGNING == 'true' && matrix.distribution == 'play'
+        run: pnpm tauri android build --target aarch64 --aab --ci
+      - name: Debug APK for testing
+        if: env.HAS_SIGNING != 'true' && matrix.distribution == 'direct'
+        run: pnpm tauri android build --target aarch64 --debug --apk --ci
+      - name: Verify and package GitHub update
+        if: env.HAS_SIGNING == 'true' && matrix.distribution == 'direct'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          APK=src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$APK"
+          CODE=$("$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -n 1)
+          node scripts/package-android-release.mjs "$APK" "$CODE" "$RUNNER_TEMP/hongsi-release"
+      - name: Verify and package Play bundle
+        if: env.HAS_SIGNING == 'true' && matrix.distribution == 'play'
+        run: node scripts/package-google-play.mjs src-tauri/gen/android/app/build/outputs/bundle/universalRelease/app-universal-release.aab "$RUNNER_TEMP/hongsi-release"
+      - uses: actions/upload-artifact@v7
+        if: env.HAS_SIGNING == 'true'
+        with:
+          name: ${{ matrix.distribution == 'direct' && 'hongsi-android' || 'hongsi-google-play' }}
+          path: ${{ runner.temp }}/hongsi-release/android/
+          if-no-files-found: error
+      - name: Remove restored credentials
+        if: always()
+        run: rm -f src-tauri/gen/android/keystore.properties src-tauri/gen/android/app/google-services.json "$RUNNER_TEMP/hongsi-release.jks"
+
+  publish:
+    env:
+      HONGSI_REPO_URL: ${{ secrets.HONGSI_REPO_URL }}
+    if: github.event_name == 'release' && !github.event.release.draft
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: hongsi-android
+          path: release-assets
+      - uses: actions/download-artifact@v8
+        with:
+          name: hongsi-google-play
+          path: release-assets
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease && 'true' || 'false' }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: node app/scripts/publish-github-release.mjs release-assets

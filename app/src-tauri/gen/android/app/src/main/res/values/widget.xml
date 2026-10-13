@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="attendance_widget_name">빠른 출결</string>
+    <string name="attendance_widget_description">홈 화면에서 빠르게 출결해요.</string>
+    <color name="widget_background">#FFFAF6</color>
+    <color name="widget_text">#292321</color>
+    <color name="widget_muted">#756C67</color>
+    <color name="widget_key">#F3EAE3</color>
+    <color name="widget_primary">#CB470D</color>
+    <color name="widget_on_primary">#FFFFFF</color>
+    <color name="widget_error">#BF3340</color>
+    <string name="today_widget_name">오늘 수업</string>
+    <string name="today_widget_description">오늘 남은 수업과 강의실을 확인해요.</string>
+    <string name="deadlines_widget_name">다가오는 마감</string>
+    <string name="deadlines_widget_description">과제와 강의, 할 일의 마감과 상태를 확인해요.</string>
+    <string name="seat_widget_name">열람실 좌석</string>
+    <string name="seat_widget_description">내 좌석과 남은 시간을 확인하고 연장하거나 퇴실해요.</string>
+    <string name="week_widget_name">주간 시간표</string>
+    <string name="week_widget_description">한 주의 수업과 강의실을 한눈에 확인해요.</string>
+    <string name="deadlines_large_widget_name">다가오는 마감 크게</string>
+    <string name="deadlines_large_widget_description">더 많은 일정의 마감과 상태를 한눈에 확인해요.</string>
+    <color name="widget_badge_ok_text">#147447</color>
+    <color name="widget_badge_ok_background">#18147447</color>
+    <color name="widget_badge_warn_text">#93620D</color>
+    <color name="widget_badge_warn_background">#1FCA8800</color>
+    <color name="widget_badge_danger_text">#BF3340</color>
+    <color name="widget_badge_danger_background">#1FBF3340</color>
+    <color name="widget_badge_info_text">#2463AA</color>
+    <color name="widget_badge_info_background">#1F2463AA</color>
+    <color name="widget_badge_muted_text">#756C67</color>
+    <color name="widget_badge_muted_background">#1F756C67</color>
+    <string name="today_large_widget_name">오늘 수업 크게</string>
+    <string name="today_large_widget_description">오늘의 수업과 강의실을 넓게 확인해요.</string>
+    <color name="widget_border">#D7CDC6</color>
+    <string name="seat_widget_preview_heading"><b>제4공학관</b> <small><font color="#756C67">(T동)</font></small></string>
+    <string name="seat_widget_preview_remaining">1시간 30분 <small>남음</small></string>
+    <color name="widget_todo_neutral">#111827</color>
+    <color name="widget_deadline_soon">#bf3037</color>
+    <color name="widget_timetable_surface">#ffffff</color>
+    <color name="widget_timetable_text">#202735</color>
+    <color name="widget_timetable_text_secondary">#535e6e</color>
+    <color name="widget_timetable_now">#bf3037</color>
+    <color name="widget_attendance_status">#B3390B</color>
+
+    <color name="widget_app_surface">#ffffff</color>
+    <color name="widget_app_text">#202735</color>
+    <color name="widget_app_muted">#535e6e</color>
+    <color name="widget_app_key">#f7f8fa</color>
+    <color name="widget_app_border">#e4e8ed</color>
+    <color name="widget_app_primary">#cf4510</color>
+    <color name="widget_app_primary_weak">#fff0e8</color>
+    <color name="widget_app_primary_text">#b3390b</color>
+    <color name="widget_app_on_primary">#ffffff</color>
+    <color name="widget_app_ok">#147448</color>
+    <color name="widget_app_ok_weak">#e3f6ec</color>
+    <color name="widget_app_danger">#bf3037</color>
+    <color name="widget_app_danger_weak">#fde8e8</color>
+    <color name="widget_app_muted_weak">#eef1f5</color>
+    <color name="widget_app_warn">#925700</color>
+    <color name="widget_app_warn_weak">#fff3dc</color>
+    <color name="widget_app_badge_muted">#1a94a3b8</color>
+    <string name="widget_attendance_heading" formatted="false">빠른 출결</string>
+    <string name="widget_preview_math" formatted="false">대학수학(1)</string>
+    <string name="widget_action_refresh" formatted="false">새로고침</string>
+    <string name="widget_attendance_available" formatted="false">출석할 수 있어요.</string>
+    <string name="widget_preview_attendance_detail" formatted="false">월2 10:00 수업 C819</string>
+    <string name="widget_attendance_auto_check" formatted="false">10초마다 자동 확인</string>
+    <string name="widget_action_attend" formatted="false">출석하기</string>
+    <string name="widget_preview_seat_room" formatted="false">3층 제 1열람실</string>
+    <string name="widget_preview_seat_number" formatted="false">20번</string>
+    <string name="widget_action_extend" formatted="false">연장</string>
+    <string name="widget_action_leave" formatted="false">퇴실</string>
+    <string name="widget_today_heading" formatted="false">오늘 수업</string>
+    <string name="widget_preview_time_1000" formatted="false">10:00</string>
+    <string name="widget_preview_room_c819" formatted="false">C819</string>
+    <string name="widget_status_present" formatted="false">출석</string>
+    <string name="widget_preview_time_1200" formatted="false">12:00</string>
+    <string name="widget_preview_japanese" formatted="false">교양일본어</string>
+    <string name="widget_preview_room_c315" formatted="false">C315</string>
+    <string name="widget_status_scheduled" formatted="false">예정</string>
+    <string name="widget_preview_time_1400" formatted="false">14:00</string>
+    <string name="widget_preview_english" formatted="false">전공기초영어</string>
+    <string name="widget_preview_room_d0104" formatted="false">D0104</string>
+    <string name="widget_attendance_records_error" formatted="false">출석 기록을 불러오지 못했어요.</string>
+    <string name="widget_today_empty" formatted="false">오늘은 수업이 없어요.</string>
+    <string name="widget_back_symbol" formatted="false">‹</string>
+    <string name="widget_action_cancel_input" formatted="false">입력 취소</string>
+    <string name="widget_attendance_code" formatted="false">출석번호</string>
+    <string name="widget_action_delete" formatted="false">삭제</string>
+    <string name="widget_action_delete_digit" formatted="false">한 자리 지우기</string>
+    <string name="widget_preview_linear_algebra" formatted="false">선형대수학</string>
+    <string name="widget_loading" formatted="false">정보를 불러오고 있어요.</string>
+    <string name="widget_week_heading" formatted="false">주간 시간표</string>
+</resources>

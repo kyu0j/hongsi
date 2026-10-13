@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <issue id="UseAppTint">
+        <ignore path="src/main/res/layout/attendance_widget_preview.xml" />
+        <ignore path="src/main/res/layout/seat_widget_preview.xml" />
+        <ignore path="src/main/res/layout/today_large_widget_preview.xml" />
+        <ignore path="src/main/res/layout/today_widget_preview.xml" />
+        <ignore path="src/main/res/layout/widget_card.xml" />
+        <ignore path="src/main/res/layout/widget_list_card.xml" />
+        <ignore path="src/main/res/layout/widget_seat.xml" />
+        <ignore path="src/main/res/layout/widget_status.xml" />
+    </issue>
+    <issue id="UseCompatTextViewDrawableXml">
+        <ignore path="src/main/res/layout/attendance_widget_preview.xml" />
+        <ignore path="src/main/res/layout/seat_widget_preview.xml" />
+        <ignore path="src/main/res/layout/widget_attendance_body.xml" />
+        <ignore path="src/main/res/layout/widget_seat.xml" />
+    </issue>
+    <issue id="UnusedAttribute">
+        <ignore path="src/main/res/layout/seat_widget_preview.xml" />
+        <ignore path="src/main/res/layout/widget_seat.xml" />
+        <ignore path="src/main/res/xml/attendance_widget_info.xml" />
+        <ignore path="src/main/res/xml/deadlines_large_widget_info.xml" />
+        <ignore path="src/main/res/xml/deadlines_widget_info.xml" />
+        <ignore path="src/main/res/xml/seat_widget_info.xml" />
+        <ignore path="src/main/res/xml/today_large_widget_info.xml" />
+        <ignore path="src/main/res/xml/today_widget_info.xml" />
+        <ignore path="src/main/res/xml/week_widget_info.xml" />
+    </issue>
+    <issue id="UseCompoundDrawables">
+        <ignore path="src/main/res/layout/attendance_widget_preview.xml" />
+        <ignore path="src/main/res/layout/widget_attendance_body.xml" />
+        <ignore path="src/main/res/layout/widget_deadline_row.xml" />
+    </issue>
+    <issue id="NestedWeights">
+        <ignore path="src/main/res/layout/widget_keypad.xml" />
+    </issue>
+    <issue id="UselessParent">
+        <ignore path="src/main/res/layout/attendance_widget_preview.xml" />
+        <ignore path="src/main/res/layout/today_large_widget_preview.xml" />
+        <ignore path="src/main/res/layout/today_widget_preview.xml" />
+    </issue>
+    <issue id="DefaultLocale,TrimLambda,UseKtx">
+        <ignore path="src/main/java/dev/kyuyoung/hongsi/generated/RustWebChromeClient.kt" />
+    </issue>
+    <issue id="ViewConstructor">
+        <ignore path="src/main/java/dev/kyuyoung/hongsi/generated/RustWebView.kt" />
+    </issue>
+    <issue id="MissingOnRenderProcessGone">
+        <ignore path="src/main/java/dev/kyuyoung/hongsi/generated/RustWebViewClient.kt" />
+    </issue>
+</lint>
