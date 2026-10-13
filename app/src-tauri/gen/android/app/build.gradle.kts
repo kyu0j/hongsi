@@ -1,0 +1,131 @@
+import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    id("com.android.application")
+    id("com.google.gms.google-services")
+    id("rust")
+}
+
+val distribution = providers.environmentVariable("HONGSI_ANDROID_DISTRIBUTION").orElse("direct").get()
+require(distribution in setOf("direct", "play")) { "HONGSI_ANDROID_DISTRIBUTION must be direct or play" }
+
+val hongsiUpdateUrl = providers.exec {
+    workingDir(rootProject.file("../../.."))
+    commandLine("node", "scripts/public-env.mjs", "--android-update")
+}.standardOutput.asText.get().trim()
+
+val tauriProperties = Properties().apply {
+    val propFile = file("tauri.properties")
+    if (propFile.exists()) {
+        propFile.inputStream().use { load(it) }
+    }
+}
+
+android {
+    compileSdk = 37
+    namespace = "dev.kyuyoung.hongsi"
+    defaultConfig {
+        manifestPlaceholders["usesCleartextTraffic"] = "false"
+        applicationId = "dev.kyuyoung.hongsi"
+        minSdk = 24
+        targetSdk = 37
+        versionCode = providers.environmentVariable("HONGSI_ANDROID_VERSION_CODE").orNull?.toInt()
+            ?: tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
+        versionName = providers.environmentVariable("HONGSI_ANDROID_VERSION_NAME").orNull
+            ?: tauriProperties.getProperty("tauri.android.versionName", "1.0")
+        buildConfigField("String", "HONGSI_UPDATE_URL", hongsiUpdateUrl)
+    }
+    val signingProperties = Properties().apply {
+        val config = rootProject.file("keystore.properties")
+        if (config.exists()) config.inputStream().use { load(it) }
+    }
+    signingConfigs {
+        create("release") {
+            if (signingProperties.isNotEmpty()) {
+                keyAlias = signingProperties.getProperty("keyAlias")
+                keyPassword = signingProperties.getProperty("keyPassword", signingProperties.getProperty("password"))
+                storeFile = signingProperties.getProperty("storeFile")?.let { rootProject.file(it) }
+                storePassword = signingProperties.getProperty("storePassword", signingProperties.getProperty("password"))
+            }
+        }
+    }
+    buildTypes {
+        getByName("debug") {
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
+            isDebuggable = true
+            isJniDebuggable = true
+            isMinifyEnabled = false
+            packaging {
+                jniLibs.keepDebugSymbols.add("*/arm64-v8a/*.so")
+                jniLibs.keepDebugSymbols.add("*/armeabi-v7a/*.so")
+                jniLibs.keepDebugSymbols.add("*/x86/*.so")
+                jniLibs.keepDebugSymbols.add("*/x86_64/*.so")
+            }
+        }
+        getByName("release") {
+            if (signingProperties.isNotEmpty()) signingConfig = signingConfigs.getByName("release")
+            optimization {
+               enable = true
+            }
+            proguardFiles(
+                *fileTree(".") {
+                  include("**/*.pro")
+                  exclude("build/**")
+                }.files.toTypedArray()
+            )
+        }
+    }
+    sourceSets {
+        getByName("main").kotlin.directories.add("src/$distribution/java")
+        getByName("debug").manifest.srcFile("src/$distribution/AndroidManifest.xml")
+        getByName("release").manifest.srcFile("src/$distribution/AndroidManifest.xml")
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+    buildFeatures {
+        buildConfig = true
+    }
+}
+
+val widgetThemes = tasks.register<GenerateWidgetThemes>("generateWidgetThemes") {
+    sourceDirectory.set(layout.projectDirectory.dir("src/main/res"))
+    resourceDirectory.set(layout.buildDirectory.dir("generated/widgetThemes/res"))
+    javaDirectory.set(layout.buildDirectory.dir("generated/widgetThemes/java"))
+}
+androidComponents.onVariants { variant ->
+    variant.sources.res?.addGeneratedSourceDirectory(widgetThemes, GenerateWidgetThemes::resourceDirectory)
+    variant.sources.java?.addGeneratedSourceDirectory(widgetThemes, GenerateWidgetThemes::javaDirectory)
+    val variantName = variant.name.replaceFirstChar { it.uppercase() }
+    val generatedSources = tasks.register<Exec>("prepare${variantName}WebViewSources") {
+        dependsOn("rustBuild$variantName")
+        commandLine("node", rootProject.file("../../../scripts/prepare-android-libraries.mjs").absolutePath, "--generated")
+    }
+    tasks.matching { it.name == "compile${variantName}Kotlin" }.configureEach {
+        dependsOn(generatedSources)
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_21
+    }
+}
+
+rust {
+    rootDirRel = "../../../"
+}
+
+dependencies {
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
+    if (distribution == "play") implementation("com.google.android.play:app-update:2.1.0")
+    implementation("androidx.webkit:webkit:1.17.1")
+    implementation("androidx.appcompat:appcompat:1.8.0")
+    implementation("androidx.activity:activity-ktx:1.13.0")
+    implementation("com.google.android.material:material:1.14.0")
+    implementation("androidx.lifecycle:lifecycle-process:2.11.0")
+}
+
+apply(from = file("tauri.build.gradle.kts"))

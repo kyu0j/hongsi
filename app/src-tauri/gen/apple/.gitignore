@@ -1,0 +1,6 @@
+Externals/
+*.xcodeproj/
+*.xcworkspace/
+Hongsi/
+HongsiWidgets/
+.ci-project.json

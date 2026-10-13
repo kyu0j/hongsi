@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='utf-8'?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="12dp" android:background="@drawable/widget_today_surface">
+  <LinearLayout android:layout_width="match_parent" android:layout_height="40dp" android:orientation="horizontal" android:gravity="center_vertical">
+    <TextView android:layout_width="0dp" android:layout_height="match_parent" android:text="@string/widget_today_heading" android:textSize="20sp" android:textColor="@color/widget_app_text" android:includeFontPadding="false" android:layout_weight="1" android:gravity="center_vertical" android:maxLines="1" android:ellipsize="end" android:textStyle="bold" />
+    <FrameLayout android:layout_width="40dp" android:layout_height="40dp" android:contentDescription="@string/widget_action_refresh">
+      <ImageView android:layout_width="match_parent" android:layout_height="match_parent" android:padding="11dp" android:src="@drawable/ic_widget_refresh" android:tint="@color/widget_app_muted" android:importantForAccessibility="no" />
+      <ProgressBar android:layout_width="match_parent" android:layout_height="match_parent" android:padding="10dp" android:indeterminate="true" android:indeterminateOnly="true" android:indeterminateDrawable="@drawable/widget_refresh_spin" android:indeterminateTint="@color/widget_app_muted" android:indeterminateDuration="650" android:interpolator="@android:anim/linear_interpolator" android:visibility="gone" android:importantForAccessibility="no" />
+    </FrameLayout>
+  </LinearLayout>
+  <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:orientation="vertical" android:layout_weight="1">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:background="@drawable/widget_class_surface" android:layout_marginTop="4dp" android:paddingTop="2dp" android:paddingBottom="2dp">
+      <FrameLayout android:layout_width="match_parent" android:layout_height="64dp">
+        <ImageView android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/widget_app_border" android:importantForAccessibility="no" android:visibility="gone" />
+        <ImageView android:layout_width="3dp" android:layout_height="match_parent" android:src="@drawable/widget_class_accent" android:scaleType="fitXY" android:layout_marginTop="10dp" android:layout_marginBottom="10dp" android:importantForAccessibility="no" android:tint="#f59e0b" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="12dp" android:paddingEnd="8dp">
+          <TextView android:layout_width="52dp" android:layout_height="wrap_content" android:text="@string/widget_preview_time_1000" android:textSize="15sp" android:textColor="@color/widget_app_text" android:includeFontPadding="false" android:gravity="center_vertical" android:textStyle="bold" />
+          <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center_vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_preview_math" android:textSize="14.5sp" android:textColor="@color/widget_app_text" android:includeFontPadding="false" android:maxLines="2" android:ellipsize="end" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_preview_room_c819" android:textSize="12.5sp" android:textColor="@color/widget_app_muted" android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end" android:layout_marginTop="3dp" />
+          </LinearLayout>
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/widget_status_present" android:textSize="12sp" android:textColor="@color/widget_app_ok" android:includeFontPadding="false" android:gravity="center" android:paddingStart="7dp" android:paddingEnd="7dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:maxLines="1" android:background="@drawable/widget_class_badge_ok" android:layout_marginStart="6dp" />
+        </LinearLayout>
+      </FrameLayout>
+      <FrameLayout android:layout_width="match_parent" android:layout_height="64dp">
+        <ImageView android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/widget_app_border" android:importantForAccessibility="no" android:visibility="visible" />
+        <ImageView android:layout_width="3dp" android:layout_height="match_parent" android:src="@drawable/widget_class_accent" android:scaleType="fitXY" android:layout_marginTop="10dp" android:layout_marginBottom="10dp" android:importantForAccessibility="no" android:tint="#3b82f6" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="12dp" android:paddingEnd="8dp">
+          <TextView android:layout_width="52dp" android:layout_height="wrap_content" android:text="@string/widget_preview_time_1200" android:textSize="15sp" android:textColor="@color/widget_app_text" android:includeFontPadding="false" android:gravity="center_vertical" android:textStyle="bold" />
+          <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center_vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_preview_japanese" android:textSize="14.5sp" android:textColor="@color/widget_app_text" android:includeFontPadding="false" android:maxLines="2" android:ellipsize="end" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_preview_room_c315" android:textSize="12.5sp" android:textColor="@color/widget_app_muted" android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end" android:layout_marginTop="3dp" />
+          </LinearLayout>
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/widget_status_scheduled" android:textSize="12sp" android:textColor="@color/widget_app_muted" android:includeFontPadding="false" android:gravity="center" android:paddingStart="7dp" android:paddingEnd="7dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:maxLines="1" android:background="@drawable/widget_class_badge_muted" android:layout_marginStart="6dp" />
+        </LinearLayout>
+      </FrameLayout>
+      <FrameLayout android:layout_width="match_parent" android:layout_height="64dp">
+        <ImageView android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/widget_app_border" android:importantForAccessibility="no" android:visibility="visible" />
+        <ImageView android:layout_width="3dp" android:layout_height="match_parent" android:src="@drawable/widget_class_accent" android:scaleType="fitXY" android:layout_marginTop="10dp" android:layout_marginBottom="10dp" android:importantForAccessibility="no" android:tint="#a855f7" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="12dp" android:paddingEnd="8dp">
+          <TextView android:layout_width="52dp" android:layout_height="wrap_content" android:text="@string/widget_preview_time_1400" android:textSize="15sp" android:textColor="@color/widget_app_text" android:includeFontPadding="false" android:gravity="center_vertical" android:textStyle="bold" />
+          <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center_vertical">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_preview_english" android:textSize="14.5sp" android:textColor="@color/widget_app_text" android:includeFontPadding="false" android:maxLines="2" android:ellipsize="end" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/widget_preview_room_d0104" android:textSize="12.5sp" android:textColor="@color/widget_app_muted" android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end" android:layout_marginTop="3dp" />
+          </LinearLayout>
+          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/widget_status_scheduled" android:textSize="12sp" android:textColor="@color/widget_app_muted" android:includeFontPadding="false" android:gravity="center" android:paddingStart="7dp" android:paddingEnd="7dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:maxLines="1" android:background="@drawable/widget_class_badge_muted" android:layout_marginStart="6dp" />
+        </LinearLayout>
+      </FrameLayout>
+    </LinearLayout>
+  </LinearLayout>
+</LinearLayout>

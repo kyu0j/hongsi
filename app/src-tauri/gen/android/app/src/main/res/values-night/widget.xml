@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_background">#1C232B</color>
+    <color name="widget_text">#EFF2F7</color>
+    <color name="widget_muted">#ADB5C1</color>
+    <color name="widget_key">#2C3642</color>
+    <color name="widget_primary">#FF9156</color>
+    <color name="widget_on_primary">#321A0D</color>
+    <color name="widget_error">#FF858C</color>
+    <color name="widget_badge_ok_text">#6BE0A5</color>
+    <color name="widget_badge_ok_background">#243CAB78</color>
+    <color name="widget_badge_warn_text">#FFD178</color>
+    <color name="widget_badge_warn_background">#24EAAE3F</color>
+    <color name="widget_badge_danger_text">#FF929A</color>
+    <color name="widget_badge_danger_background">#24E85D70</color>
+    <color name="widget_badge_info_text">#95BEFF</color>
+    <color name="widget_badge_info_background">#245991E4</color>
+    <color name="widget_badge_muted_text">#ADB5C1</color>
+    <color name="widget_badge_muted_background">#247E8B9F</color>
+    <color name="widget_border">#495563</color>
+    <string name="seat_widget_preview_heading"><b>제4공학관</b> <small><font color="#ADB5C1">(T동)</font></small></string>
+    <string name="seat_widget_preview_remaining">1시간 30분 <small>남음</small></string>
+    <color name="widget_todo_neutral">#f3f4f6</color>
+    <color name="widget_deadline_soon">#ff6b6f</color>
+    <color name="widget_timetable_surface">#aeb8c6</color>
+    <color name="widget_timetable_text">#1b2433</color>
+    <color name="widget_timetable_text_secondary">#293548</color>
+    <color name="widget_timetable_now">#ff6b6f</color>
+    <color name="widget_attendance_status">#FFB088</color>
+
+    <color name="widget_app_surface">#1a2028</color>
+    <color name="widget_app_text">#eef1f6</color>
+    <color name="widget_app_muted">#b6c0cf</color>
+    <color name="widget_app_key">#202730</color>
+    <color name="widget_app_border">#303945</color>
+    <color name="widget_app_primary">#ff8f5a</color>
+    <color name="widget_app_primary_weak">#3a2014</color>
+    <color name="widget_app_primary_text">#ffb088</color>
+    <color name="widget_app_on_primary">#1a0c04</color>
+    <color name="widget_app_ok">#3fcf8e</color>
+    <color name="widget_app_ok_weak">#0f2e22</color>
+    <color name="widget_app_danger">#ff6b6f</color>
+    <color name="widget_app_danger_weak">#3a1618</color>
+    <color name="widget_app_muted_weak">#1b2638</color>
+    <color name="widget_app_warn">#f3b44a</color>
+    <color name="widget_app_warn_weak">#33260c</color>
+    <color name="widget_app_badge_muted">#1a94a3b8</color>
+</resources>

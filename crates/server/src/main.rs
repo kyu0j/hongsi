@@ -1,0 +1,121 @@
+mod api;
+mod routes;
+mod auth;
+mod attendance;
+mod background;
+mod calendar;
+mod db;
+mod environment;
+mod error;
+mod login_limit;
+mod push;
+mod preferences;
+mod seat_watch;
+mod sessions;
+mod state;
+mod school_records;
+mod submissions;
+mod todos;
+mod updates;
+mod vault;
+
+use std::sync::Arc;
+use std::time::Duration;
+
+use sqlx::postgres::PgPoolOptions;
+use tower_http::services::{ServeDir, ServeFile};
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::EnvFilter;
+
+use crate::state::{load_secret, AppState, Config};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    environment::load()?;
+    hongsi_config::validate()?;
+    run()
+}
+
+#[tokio::main]
+async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    let config = Config::from_env();
+    tracing_subscriber::fmt()
+        .without_time()
+        .with_env_filter(
+            EnvFilter::try_new(hongsi_config::required_env("RUST_LOG"))
+                .unwrap_or_else(|_| panic!("RUST_LOG 형식이 잘못되었습니다.")),
+        )
+        .init();
+    let pepper = load_secret(&config.secret_file)?;
+    let db = PgPoolOptions::new()
+        .max_connections(8)
+        .acquire_timeout(Duration::from_secs(5))
+        .connect(&config.database_url)
+        .await?;
+    sqlx::migrate!("./migrations").run(&db).await?;
+
+    let push = push::Push::from_env()?;
+    tracing::info!(
+        web = push.ready("web"),
+        android = push.ready("fcm"),
+        ios = push.ready("apns"),
+        "알림 발송 설정"
+    );
+    let state = Arc::new(AppState {
+        push,
+        http: hongsi_core::public_client(),
+        db,
+        pepper,
+        sessions: Default::default(),
+        login_attempts: Default::default(),
+        meals: Default::default(),
+        seats: Default::default(),
+        seat_refresh: Default::default(),
+        submissions: Default::default(),
+        config,
+    });
+
+    tokio::spawn(seat_watch::run(state.clone()));
+    tokio::spawn(background::run(state.clone()));
+    {
+        let st = state.clone();
+        tokio::spawn(async move {
+            let mut tick = tokio::time::interval(Duration::from_secs(600));
+            loop {
+                tick.tick().await;
+                let removed = st.sessions.sweep(Duration::from_secs(6 * 3600));
+                st.login_attempts.sweep();
+                if let Err(e) = db::clean_remembered(&st.db).await {
+                    tracing::warn!(code=?e.as_database_error().and_then(|e|e.code()), "만료된 로그인 정보 정리 실패");
+                }
+                if let Err(e) = attendance::clean(&st.db).await {
+                    tracing::warn!(code=?e.as_database_error().and_then(|e|e.code()), "지난 출석 확인 기록 정리 실패");
+                }
+                if let Err(e) = db::clean_history(&st.db).await {
+                    tracing::warn!(code=?e.as_database_error().and_then(|e|e.code()), "지난 좌석 기록과 알림 읽음 기록 정리 실패");
+                }
+                if removed > 0 {
+                    tracing::info!(removed, "오래된 세션 정리");
+                }
+            }
+        });
+    }
+
+    let static_dir = state.config.static_dir.clone();
+    let app = api::router()
+        .fallback_service(
+            ServeDir::new(&static_dir).fallback(ServeFile::new(static_dir.join("index.html"))),
+        )
+        .layer(axum::middleware::from_fn_with_state(state.clone(), auth::maintain_session))
+        .layer(axum::middleware::from_fn(error::normalize_response))
+        .layer(TraceLayer::new_for_http())
+        .with_state(state.clone());
+
+    let listener = tokio::net::TcpListener::bind(&state.config.bind).await?;
+    tracing::info!("홍시 서버 실행: http://{}", state.config.bind);
+    axum::serve(listener, app)
+        .with_graceful_shutdown(async {
+            let _ = tokio::signal::ctrl_c().await;
+        })
+        .await?;
+    Ok(())
+}
