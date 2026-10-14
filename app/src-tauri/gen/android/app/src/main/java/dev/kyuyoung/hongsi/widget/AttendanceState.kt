@@ -19,10 +19,10 @@ internal object AttendanceState {
         val sameDay = snapshot?.text("date") == today
         val age = now - (snapshot?.optLong("checkedAt") ?: 0)
         if (sameDay && age in 0 until 60_000) return false
-        if (sameDay && age in 0 until ACTIVE_MAX_AGE && snapshot!!.array("active").any {
+        if (sameDay && age in 0 until ACTIVE_MAX_AGE && snapshot.array("active").any {
             it.optJSONObject("mark")?.text("kind") !in attended
         }) return true
-        val saved = if (sameDay) snapshot!!.array("sessions") else emptyList()
+        val saved = if (sameDay) snapshot.array("sessions") else emptyList()
         return WidgetAttendanceSnapshot.sessions(data.array("slots"), now).any { session ->
             now >= session.optLong("at") - 180_000 && now < session.optLong("at") + 3600_000 &&
                 saved.firstOrNull { sameCourse(it, session) && it.optLong("at") == session.optLong("at") }
@@ -116,7 +116,7 @@ internal object AttendanceState {
             val state = when {
                 mark != null -> mark.text("label") to when (mark.text("kind")) { "absent" -> "danger"; "late" -> "warn"; "present", "excused" -> "ok"; else -> "muted" }
                 listed -> "출석 가능" to "primary"
-                fresh && item?.optBoolean("seenOpen") == true -> "확인 불가" to "muted"
+                item?.optBoolean("unrecorded") == true || (fresh && item?.optBoolean("seenOpen") == true) -> "확인 불가" to "muted"
                 at > now -> if (window) "확인 중" to "primary" else "예정" to "muted"
                 window && !fresh && snapshot.text("error").isBlank() -> "확인 중" to "primary"
                 else -> "확인 불가" to "muted"

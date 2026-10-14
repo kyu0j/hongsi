@@ -3,19 +3,20 @@ import { app, handleAuthError } from '../../features/auth/auth-state.svelte';
 import { errorText, troubleOf, type Trouble } from '../api/net.svelte';
 import { readUserData, writeUserData } from './session';
 
-type Cached<T> = { data: T; at: number };
+type Cached<T> = { data: T; at: number; requestedAt?: number };
 
 function readCache<T>(key: string): Cached<T> | null {
   return readUserData<Cached<T> | null>(key, null);
 }
 
-function writeCache<T>(key: string, data: T, at: number) {
-  writeUserData(key, { data, at });
+function writeCache<T>(key: string, data: T, at: number, requestedAt: number) {
+  writeUserData(key, { data, at, requestedAt });
 }
 
 export class Resource<T> {
   data = $state<T | null>(null);
   at = $state(0);
+  requestedAt = $state(0);
   loading = $state(false);
   error = $state<string | null>(null);
   trouble = $state<Trouble | 'other' | null>(null);
@@ -40,6 +41,7 @@ export class Resource<T> {
     if (cached) {
       this.data = this.normalize(cached.data);
       this.at = cached.at;
+      this.requestedAt = cached.requestedAt ?? 0;
     }
   }
 
@@ -86,10 +88,11 @@ export class Resource<T> {
   }
 
   private async fetch(force: boolean, revision: number) {
+    const requestedAt = Date.now();
     try {
       const data = await this.fetcher(force);
       if (revision !== this.revision) return;
-      this.set(data);
+      this.set(data, Date.now(), requestedAt);
       this.error = this.warning(data);
       this.trouble = this.error ? 'other' : null;
       this.appliedRevision = revision;
@@ -104,17 +107,18 @@ export class Resource<T> {
     }
   }
 
-  set(data: T, at = Date.now()) {
+  set(data: T, at = Date.now(), requestedAt = at) {
     data = this.normalize(data);
     this.data = data;
     this.at = at;
+    this.requestedAt = requestedAt;
     this.persist(data, this.at);
   }
 
   protected warning(_data: T): string | null { return null; }
 
   protected persist(data: T, at: number) {
-    writeCache(this.key, data, at);
+    writeCache(this.key, data, at, this.requestedAt);
   }
 
   beginMutation() {
@@ -147,6 +151,7 @@ export class Resource<T> {
     this.loading = false;
     this.data = null;
     this.at = 0;
+    this.requestedAt = 0;
     this.error = null;
     this.trouble = null;
   }
