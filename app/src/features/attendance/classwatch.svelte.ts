@@ -3,7 +3,7 @@ import { dayKey, todayKey } from '../../shared/utils/format';
 import { attendance, attendanceReceipts, lectures, timetable } from './attendance-resources.svelte';
 import { handleAuthError } from '../auth/auth-state.svelte';
 import { isCurrentSession, onSessionChange, readUserData, sessionVersion, writeUserData } from '../../shared/state/session';
-import type { ActiveLecture, AttendanceCourse, AttendanceReceipt, AttendanceSubmission, ClassSlot, MarkKind } from '../../shared/types';
+import type { ActiveLecture, AttendanceCourse, AttendanceMark, AttendanceReceipt, AttendanceSubmission, ClassSlot, MarkKind } from '../../shared/types';
 
 const WATCH_BEFORE = 3 * 60_000;
 const WATCH_AFTER = 10 * 60_000;
@@ -79,25 +79,46 @@ type AttendedMark = Mark & { kind: 'present' | 'late' | 'excused' };
 export const isAttended = (m: Mark | null): m is AttendedMark => !!m && ATTENDED.includes(m.kind);
 export const markTitle = (m: Mark) => m.kind === 'present' ? '출석 완료' : `${m.label} 처리됨`;
 
-function schoolMark(c: CourseRef, course: AttendanceCourse): Mark | null {
+function schoolEntry(c: CourseRef, course: AttendanceCourse): AttendanceMark | null {
   if (course.cyber || !course.published || c.at === undefined || dayKey(c.at) !== todayKey()) return null;
-  const sessions = todaySessions(timetable.data?.slots ?? []).filter((s) => sameCourse(s, c));
+  const slots = (timetable.data?.slots ?? []).filter((s) => sameCourse(s, c));
+  const sessions = todaySessions(slots);
   const index = sessions.findIndex((s) => s.at === c.at);
-  const k = new Date(c.at + KST);
-  const date = `${k.getUTCMonth() + 1}/${k.getUTCDate()}`;
-  const entries = course.weeks.flatMap((w) => w.sessions).filter((s) => s.date === date);
-  if (index < 0 || entries.length !== sessions.length) return null;
-  const entry = entries[index];
+  if (index < 0) return null;
+  const weekly = slots.flatMap((s) => classSessions({ ...s, at: 0 }))
+    .sort((a, b) => a.weekday - b.weekday || a.start.localeCompare(b.start));
+  const position = weekly.findIndex((s) => s.weekday === sessions[index].weekday && s.start === sessions[index].start);
+  const dateAt = (weekday: number) => {
+    const k = new Date(c.at! + KST + (weekday - sessions[index].weekday) * 86_400_000);
+    return `${k.getUTCMonth() + 1}/${k.getUTCDate()}`;
+  };
+  const dates = weekly.map((s) => dateAt(s.weekday));
+  const weeks = course.weeks.filter((w) => w.sessions.length === weekly.length
+    && w.sessions.some((s, i) => s.date === dates[i])
+    && w.sessions.every((s, i) => !/^\d{1,2}\/\d{1,2}$/.test(s.date) || s.date === dates[i]));
+  if (weeks.length === 1 && position >= 0) return weeks[0].sessions[position];
+  const entries = course.weeks.flatMap((w) => w.sessions).filter((s) => s.date === dateAt(sessions[index].weekday));
+  return entries.length === sessions.length ? entries[index] : null;
+}
+
+function schoolRecord(c: CourseRef) {
+  const matches = (attendance.data ?? []).filter((course) => sameCourse(course, c));
+  const listed = matches.length === 1 ? matches[0] : undefined;
+  const latest = classWatch.school[c.code ?? listed?.code ?? ''];
+  const useLatest = latest && latest.at >= attendance.requestedAt;
+  const course = useLatest ? latest.course : listed;
+  return { entry: course ? schoolEntry(c, course) : null, at: useLatest ? latest.at : attendance.requestedAt };
+}
+
+function schoolMark(entry: AttendanceMark | null): Mark | null {
+  if (!entry) return null;
   if (LABEL[entry.kind]) return { label: LABEL[entry.kind]!, kind: entry.kind, source: 'school' };
   return entry.kind === 'other' && entry.mark ? { label: entry.mark, kind: entry.kind, source: 'school' } : null;
 }
 
 function lectureRef(l: ActiveLecture, now = Date.now()): CourseRef {
-  const classes = todaySessions(timetable.data?.slots ?? [], now).filter((c) => sameCourse(l, c));
-  const time = /(?:^|\D)(\d{1,2}):(\d{2})/.exec(l.time);
-  const start = time ? `${time[1].padStart(2, '0')}:${time[2]}` : null;
-  const matches = start ? classes.filter((c) => c.start === start) : classes.filter((c) => inWindow(c, now));
-  return matches.length === 1 ? { ...matches[0], lectureKey: l.key } : { code: l.code ?? null, name: l.name, lectureKey: l.key };
+  const session = lectureSession(l, now);
+  return session ? { ...session, lectureKey: l.key } : { code: l.code ?? null, name: l.name, lectureKey: l.key };
 }
 
 export function lectureSession(l: ActiveLecture, now = classWatch.now): TodayClass | null {
@@ -119,18 +140,20 @@ export function classScheduleLabel(c: ClassSlot | null, fallback = ''): string {
 
 export function markFor(c: CourseRef): Mark | null {
   if (c.at !== undefined && dayKey(c.at) !== todayKey()) return null;
-  const matches = (attendance.data ?? []).filter((course) => sameCourse(course, c));
-  const listed = matches.length === 1 ? matches[0] : undefined;
-  const latest = classWatch.school[c.code ?? listed?.code ?? ''];
-  const course = latest && latest.at >= attendance.at ? latest.course : listed;
-  const official = course ? schoolMark(c, course) : null;
-  if (official) return official;
+  const school = schoolRecord(c);
+  const official = schoolMark(school.entry);
   const receipts = [...(attendanceReceipts.data ?? []), ...classWatch.receipts.map((entry) => entry.receipt)];
   const receipt = receipts.filter((r) => validReceipt(r) && (c.lectureKey === r.lecture.key || keyOf(lectureRef(r.lecture, r.confirmedAt)) === keyOf(c)))
     .sort((a, b) => b.confirmedAt - a.confirmedAt)[0];
-  return receipt ? { label: LABEL[receipt.kind]!, kind: receipt.kind, source: 'app' } : null;
+  if (official && (!receipt || school.at > receipt.confirmedAt)) return official;
+  return receipt ? { label: LABEL[receipt.kind]!, kind: receipt.kind, source: 'app' } : official;
 }
 export const lectureMark = (l: ActiveLecture) => markFor(lectureRef(l));
+
+function unrecorded(c: CourseRef) {
+  const entry = schoolRecord(c).entry;
+  return entry?.kind === 'planned' || entry?.kind === 'none';
+}
 
 export function sessionState(c: TodayClass): { label: string; cls: string } {
   const m = markFor(c);
@@ -138,6 +161,7 @@ export function sessionState(c: TodayClass): { label: string; cls: string } {
   const fresh = !lectures.error && lectures.at >= classWatch.now - 2 * POLL_MS;
   const listed = fresh && lectures.data?.items.some((l) => keyOf(lectureRef(l)) === keyOf(c));
   if (listed) return { label: '출석 가능', cls: 'primary' };
+  if (unrecorded(c)) return { label: '확인 불가', cls: '' };
   if (fresh && classWatch.seenOpen.includes(keyOf(c))) return { label: '확인 불가', cls: '' };
   if (c.at > classWatch.now) return { label: inWindow(c, classWatch.now) ? '확인 중' : '예정', cls: inWindow(c, classWatch.now) ? 'primary' : '' };
   if (inWindow(c, classWatch.now) && !fresh && !lectures.error) return { label: '확인 중', cls: 'primary' };
@@ -157,6 +181,7 @@ export function attendanceWidgetSnapshot() {
       ...session,
       identity: keyOf(session),
       mark: markFor(session),
+      unrecorded: unrecorded(session),
       seenOpen: classWatch.seenOpen.includes(keyOf(session)),
     })),
     active: (lectures.data?.items ?? []).map((lecture) => ({
@@ -279,10 +304,10 @@ async function poll() {
 }
 async function checkSchool(c: CourseRef) {
   if (!c.code) return;
-  const version = sessionVersion(), day = todayKey();
+  const version = sessionVersion(), day = todayKey(), at = Date.now();
   try {
     const course = await api.attendanceCourse(c.code);
-    if (isCurrentSession(version) && todayKey() === day) classWatch.school[c.code] = { course, at: Date.now() };
+    if (isCurrentSession(version) && todayKey() === day && at >= (classWatch.school[c.code]?.at ?? 0)) classWatch.school[c.code] = { course, at };
   } catch (e) { handleAuthError(e); }
 }
 export function afterSubmit(submission: AttendanceSubmission) {

@@ -56,24 +56,45 @@ enum AttendanceSnapshot {
         let sessions = sessions(slots: slots, now: now)
         func reference(_ lecture: JSON, at: Double) -> JSON {
             let time = clock(lecture.text("time"))
-            let matches = sessions.filter { sameCourse($0, lecture) && (time != nil ? $0.text("start") == time! : at >= $0.number("at") - 180_000 && at <= $0.number("at") + 600_000) }
-            if matches.count == 1 { var item = matches[0]; item["key"] = lecture.text("key"); return item }
+            let period = lecture.text("time").replacingOccurrences(of: "교시", with: "").trimmingCharacters(in: .whitespaces)
+            let periodDay = period.first.flatMap { "월화수목금토일".firstIndex(of: $0) }.map { "월화수목금토일".distance(from: "월화수목금토일".startIndex, to: $0) }
+            let periodNumber = Int(period.dropFirst().trimmingCharacters(in: .whitespaces))
+            let matching = sessions.filter { sameCourse($0, lecture) }
+            let matches = matching.filter {
+                if let time { return $0.text("start") == time }
+                if let periodDay, let periodNumber { return $0.integer("weekday") == periodDay && ($0["periods"] as? [Int])?.first == periodNumber }
+                return at >= $0.number("at") - 180_000 && at <= $0.number("at") + 600_000
+            }
+            if let session = matches.count == 1 ? matches.first : time == nil && periodDay == nil && matching.count == 1 ? matching.first : nil {
+                var item = session; item["key"] = lecture.text("key"); return item
+            }
             return lecture
         }
-        func mark(_ item: JSON) -> JSON? {
+        func entry(_ item: JSON) -> JSON? {
             let matching = courses.filter { sameCourse($0, item) }
-            if matching.count == 1, matching[0].flag("published"), !matching[0].flag("cyber"), item["at"] != nil {
-                let lessonSessions = sessions.filter { sameCourse($0, item) }
-                let entries = matching[0].objects("weeks").flatMap { $0.objects("sessions") }.filter { $0.text("date") == HongsiClock.text(now, "M/d") }
-                if entries.count == lessonSessions.count, let index = lessonSessions.firstIndex(where: { $0.number("at") == item.number("at") }) {
-                    let entry = entries[index]; let label = labels[entry.text("kind")] ?? (entry.text("kind") == "other" ? entry.text("mark") : "")
-                    if !label.isEmpty { return ["kind": entry.text("kind"), "label": label, "source": "school"] }
-                }
+            guard matching.count == 1, matching[0].flag("published"), !matching[0].flag("cyber"), item["at"] != nil else { return nil }
+            let course = matching[0], lessonSessions = sessions.filter { sameCourse($0, item) }
+            guard let index = lessonSessions.firstIndex(where: { $0.number("at") == item.number("at") }) else { return nil }
+            let courseSlots = slots.filter { sameCourse($0, item) }
+            let weekly = (0...6).flatMap { day in Self.sessions(slots: courseSlots, now: now.addingTimeInterval(Double(day - HongsiClock.weekday(now)) * 86_400)) }
+            let position = weekly.firstIndex { $0.number("at") == item.number("at") }
+            let dates = weekly.map { HongsiClock.text(Date(timeIntervalSince1970: $0.number("at") / 1000), "M/d") }
+            let weeks = course.objects("weeks").map { $0.objects("sessions") }.filter { entries in
+                entries.count == weekly.count && entries.enumerated().contains { i, e in e.text("date") == dates[i] } &&
+                    entries.enumerated().allSatisfy { i, e in e.text("date").range(of: "^[0-9]{1,2}/[0-9]{1,2}$", options: .regularExpression) == nil || e.text("date") == dates[i] }
             }
+            if weeks.count == 1, let position { return weeks[0][position] }
+            let entries = course.objects("weeks").flatMap { $0.objects("sessions") }.filter { $0.text("date") == HongsiClock.text(now, "M/d") }
+            return entries.count == lessonSessions.count ? entries[index] : nil
+        }
+        func mark(_ item: JSON) -> JSON? {
+            let entry = entry(item)
+            let label = entry.map { labels[$0.text("kind")] ?? ($0.text("kind") == "other" ? $0.text("mark") : "") } ?? ""
             let receipt = receipts.filter { valid($0, now: now) }.sorted { $0.number("confirmedAt") > $1.number("confirmedAt") }.first {
                 let lecture = $0.object("lecture")
                 return (!item.text("key").isEmpty && lecture.text("key") == item.text("key")) || identity(reference(lecture, at: $0.number("confirmedAt")), now: now) == identity(item, now: now)
             }
+            if let entry, !label.isEmpty, receipt == nil || ms > receipt!.number("confirmedAt") { return ["kind": entry.text("kind"), "label": label, "source": "school"] }
             return receipt.map { ["kind": $0.text("kind"), "label": labels[$0.text("kind")] ?? "", "source": "app"] }
         }
         let opened = active.map { lecture -> JSON in
@@ -85,6 +106,7 @@ enum AttendanceSnapshot {
         return ["date": today, "loaded": true, "error": "", "timetableLoaded": true, "timetableError": "", "checkedAt": ms,
                 "sessions": sessions.map { item -> JSON in
                     var value = item; value["identity"] = identity(item, now: now); value["mark"] = mark(item) as Any? ?? NSNull()
+                    value["unrecorded"] = ["planned", "none"].contains(entry(item)?.text("kind") ?? "")
                     value["seenOpen"] = seen.contains(identity(item, now: now)); return value
                 }, "active": opened]
     }
@@ -167,7 +189,7 @@ enum WidgetModel {
             let value: (String, String)
             if !mark.isEmpty { value = (mark.text("label"), mark.text("kind") == "absent" ? "error" : mark.text("kind") == "late" ? "warn" : attended.contains(mark.text("kind")) ? "success" : "muted") }
             else if listed { value = ("출석 가능", "primary") }
-            else if fresh && item.flag("seenOpen") { value = ("확인 불가", "muted") }
+            else if item.flag("unrecorded") || (fresh && item.flag("seenOpen")) { value = ("확인 불가", "muted") }
             else if at > ms { value = window ? ("확인 중", "primary") : ("예정", "muted") }
             else if window && !fresh && snapshot.text("error").isEmpty { value = ("확인 중", "primary") }
             else { value = ("확인 불가", "muted") }

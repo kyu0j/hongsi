@@ -99,8 +99,8 @@
       } else {
         result = attendanceFailureMessage(res.message);
       }
-      lectures.load(true);
-      attendance.load(true);
+      void lectures.refresh();
+      void attendance.refresh();
     } catch (err) {
       if (!handleAuthError(err)) result = err instanceof ApiError && (err.status === 0 || err.status >= 500)
         ? '출석 결과를 확인하지 못했어요.'
