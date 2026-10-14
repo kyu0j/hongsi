@@ -6,6 +6,7 @@
   import { publishWidgetTheme, publishWidgets, widgetSnapshot, openWidgetIntent } from './platform/widgets';
   import AppUpdate from './features/updates/AppUpdate.svelte';
   import NotificationPermission from './features/notifications/NotificationPermission.svelte';
+  import PermissionsIntro from './features/permissions/PermissionsIntro.svelte';
   import DoneConfirm from './features/calendar/DoneConfirm.svelte';
   import DownloadPage from './pages/DownloadPage.svelte';
   import { ApiError, api, isApp, native } from './shared/api/api';
@@ -14,7 +15,7 @@
   import { errorText } from './shared/api/net.svelte';
   import { syncSeatReminders } from './features/seats/seat.svelte';
   import { syncDueReminders } from './features/notifications/reminders';
-  import { initNotifications, notificationState, refreshNotifications, showFirstNotificationPermission, takeNotificationIntent } from './features/notifications/notify';
+  import { initNotifications, notificationState, refreshNotifications, takeNotificationIntent } from './features/notifications/notify';
   import { enableBackgroundByDefault, refreshBackground, syncBackgroundPreferences } from './features/notifications/background.svelte';
   import { openNotification } from './features/notifications/notification-navigation';
   import { seatPrefs } from './features/seats/seat.svelte';
@@ -124,8 +125,6 @@
       .then((fn) => { if (disposed) fn(); else cleanup = fn; });
     void bootReady.then(async () => {
       await notificationReady;
-      if (disposed) return;
-      await showFirstNotificationPermission();
       if (!disposed && app.profile && !app.loggingOut) await refreshBackground();
     });
     return () => { disposed = true; cleanup(); stopUpdates(); stopClock(); };
@@ -334,6 +333,7 @@
     </nav>
   </div>
   <ProfileSheet bind:open={profileOpen} onlogout={() => logout('device')} onlogoutall={() => logout('all')} ondeletedata={() => logout('delete')} />
+  <PermissionsIntro />
   <DoneConfirm />
 
   {/key}

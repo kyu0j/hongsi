@@ -12,7 +12,6 @@ const ios = /iPhone|iPad/i.test(navigator.userAgent) || (navigator.platform === 
 const plugin = () => import('@choochmeque/tauri-plugin-notifications-api');
 const PENDING = 'hc:notification-intent';
 const PERMISSION_ASKED = 'hc:pref:notification-permission-asked';
-const PERMISSION_INTRO = 'hc:pref:notification-permission-intro';
 const deviceFlag = (key: string) => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
 const setDeviceFlag = (key: string) => { try { localStorage.setItem(key, '1'); } catch { } };
 
@@ -105,11 +104,6 @@ export function requestNotificationPermission(): Promise<boolean> {
   permissionPrompt = prompt;
   void prompt.finally(() => { if (permissionPrompt === prompt) permissionPrompt = null; });
   return prompt;
-}
-export async function showFirstNotificationPermission() {
-  if (deviceFlag(PERMISSION_INTRO)) return;
-  setDeviceFlag(PERMISSION_INTRO);
-  await requestNotificationPermission();
 }
 export async function acceptNotificationPermission() {
   if (notificationPermission.busy) return;

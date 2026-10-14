@@ -780,6 +780,19 @@ async fn open_url(app: AppHandle, shell: State<'_, Arc<Shell>>, url: String) -> 
 }
 
 #[tauri::command]
+async fn location_permission(app: AppHandle, action: String) -> Result<Value, String> {
+    if !matches!(action.as_str(), "check" | "request" | "settings") {
+        return Err("위치 권한 요청을 확인해 주세요.".into());
+    }
+    #[cfg(target_os = "android")]
+    return android_external::location_permission(&app, &action).await;
+    #[cfg(target_os = "ios")]
+    return tauri_plugin_hongsi_ios::call(&app, "locationPermission", &action).await;
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    { let _ = app; Ok(serde_json::json!({"permission": "unsupported"})) }
+}
+
+#[tauri::command]
 async fn current_location(app: AppHandle) -> Result<Value, String> {
     #[cfg(target_os = "ios")]
     return tauri_plugin_hongsi_ios::call(&app, "currentLocation", "").await;
@@ -825,6 +838,7 @@ pub fn run_app() {
             open_url,
             reveal_file,
             current_location,
+            location_permission,
             submit_assignment,
             submission_status
         ])
