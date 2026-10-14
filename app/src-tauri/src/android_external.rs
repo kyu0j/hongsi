@@ -35,3 +35,8 @@ pub async fn open(app: &AppHandle, command: &str, value: &str) -> Result<(), Str
 pub async fn take_widget_intent(app: &AppHandle) -> Result<serde_json::Value, String> {
     app.state::<External>().0.run_mobile_plugin_async("takeWidgetIntent", ()).await.map_err(|_| "위젯을 새로고침해 주세요.".to_string())
 }
+
+pub async fn location_permission(app: &AppHandle, action: &str) -> Result<serde_json::Value, String> {
+    app.state::<External>().0.run_mobile_plugin_async("locationPermission", serde_json::json!({"value": action}))
+        .await.map_err(|_| "위치 권한을 확인하지 못했어요.".to_string())
+}

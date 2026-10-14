@@ -1,14 +1,21 @@
 package dev.kyuyoung.hongsi
 
 import androidx.core.net.toUri
+import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.DocumentsContract
+import android.provider.Settings
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import app.tauri.PermissionState
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
+import app.tauri.annotation.Permission
+import app.tauri.annotation.PermissionCallback
 import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
@@ -39,8 +46,32 @@ internal object ExternalIntents {
     }
 }
 
-@TauriPlugin
+@TauriPlugin(permissions = [Permission(strings = [Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION], alias = "location")])
 class ExternalPlugin(private val host: Activity) : Plugin(host) {
+    private fun locationPermissionState(): String {
+        if (ContextCompat.checkSelfPermission(host, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(host, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) return "granted"
+        return if (getPermissionState("location") == PermissionState.DENIED) "denied" else "default"
+    }
+    @Command fun locationPermission(invoke: Invoke) {
+        val action = invoke.parseArgs(ExternalArgs::class.java).value
+        host.runOnUiThread {
+            try {
+                when (action) {
+                    "settings" -> host.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${host.packageName}".toUri()))
+                    "request" -> if (locationPermissionState() == "default") {
+                        requestPermissionForAlias("location", invoke, "locationPermissionResult")
+                        return@runOnUiThread
+                    }
+                }
+                locationPermissionResult(invoke)
+            } catch (_: Exception) { invoke.reject("위치 권한을 확인하지 못했어요.") }
+        }
+    }
+    @PermissionCallback
+    private fun locationPermissionResult(invoke: Invoke) {
+        invoke.resolve(JSObject().put("permission", locationPermissionState()))
+    }
     @Command fun setWidgetTheme(invoke: Invoke) {
         val value = invoke.parseArgs(ExternalArgs::class.java).value
         host.runOnUiThread {

@@ -111,6 +111,21 @@ final class HongsiIOSPlugin: Plugin, QLPreviewControllerDataSource, QLPreviewCon
             try Credentials.write(nil); try WidgetStore.replace(""); WidgetCenter.shared.reloadAllTimelines()
         }
     }
+    @objc func locationPermission(_ invoke: Invoke) {
+        Task { @MainActor in
+            do {
+                let action = try invoke.parseArgs(ValueArgs.self).value
+                if location == nil { location = HongsiLocation() }
+                if action == "settings" {
+                    guard let url = URL(string: UIApplication.openSettingsURLString), await UIApplication.shared.open(url) else {
+                        invoke.reject("기기 설정을 열지 못했어요."); return
+                    }
+                }
+                let permission = action == "request" ? try await location!.requestPermission() : location!.permission
+                invoke.resolve(["permission": permission])
+            } catch { invoke.reject(error.localizedDescription) }
+        }
+    }
     @objc func currentLocation(_ invoke: Invoke) {
         Task { @MainActor in
             if location == nil { location = HongsiLocation() }

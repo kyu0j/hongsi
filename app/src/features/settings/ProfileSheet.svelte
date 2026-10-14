@@ -19,6 +19,7 @@
     type Theme,
   } from './settings.svelte';
   import NotificationSettings from '../notifications/NotificationSettings.svelte';
+  import LocationPermissionSettings from '../permissions/LocationPermissionSettings.svelte';
   import { app } from '../auth/auth-state.svelte';
   import { calendarArchive } from '../calendar/calendar-resources.svelte';
   import { updateCalendarArchive } from '../calendar/calendar-sync.svelte';
@@ -137,6 +138,9 @@
       <span class="set-label">마감일 없는 과제 표시<Switch checked={settings.showUndatedAssignments} label="마감일 없는 과제 표시" disabled={!accountPreferences.loaded} onchange={setShowUndatedAssignments} /></span>
     </div>
   </div>
+
+  <h4 class="section-title">출결</h4>
+  <div class="settings card"><LocationPermissionSettings /></div>
 
   <h4 class="section-title">알림</h4>
   <div class="settings card"><NotificationSettings /></div>
