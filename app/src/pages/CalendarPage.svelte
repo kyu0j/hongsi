@@ -62,7 +62,6 @@
 
   onMount(() => {
     calendar.load();
-    todos.load();
   });
 
   let todoOpen = $state(false);

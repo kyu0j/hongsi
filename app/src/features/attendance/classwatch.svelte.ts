@@ -194,9 +194,30 @@ export function attendanceWidgetSnapshot() {
 function persist() { writeUserData(STORE, $state.snapshot(classWatch.receipts)); }
 let users = 0;
 let timer: ReturnType<typeof setInterval> | undefined;
-let sharedAt = 0;
+let lastShareAt = 0;
 let pendingCheck: Promise<void> | null = null;
 let pendingSync: Promise<void> | null = null;
+let pendingShare: Promise<void> | null = null;
+
+export function watchAttendanceReceipts(): () => void {
+  const version = sessionVersion();
+  const visible = () => isCurrentSession(version) && document.visibilityState === 'visible';
+  const resume = () => { if (visible()) void syncReceipts(); };
+  resume();
+  document.addEventListener('visibilitychange', resume);
+  window.addEventListener('online', resume);
+  window.addEventListener('hongsi-resume', resume);
+  const retry = setInterval(() => {
+    if (visible() && Date.now() - lastShareAt >= 30_000
+      && classWatch.receipts.some((entry) => !entry.synced && validReceipt(entry.receipt))) void shareReceipts();
+  }, 30_000);
+  return () => {
+    clearInterval(retry);
+    document.removeEventListener('visibilitychange', resume);
+    window.removeEventListener('online', resume);
+    window.removeEventListener('hongsi-resume', resume);
+  };
+}
 
 export function useClassWatch(): () => void {
   users++;
@@ -204,6 +225,7 @@ export function useClassWatch(): () => void {
     timer = setInterval(tick, 1000);
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('online', onVisibility);
+    window.addEventListener('hongsi-resume', onVisibility);
     void attendance.load();
   }
   void checkNow();
@@ -213,6 +235,7 @@ export function useClassWatch(): () => void {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('online', onVisibility);
+      window.removeEventListener('hongsi-resume', onVisibility);
     }
   };
 }
@@ -220,10 +243,23 @@ export function useClassWatch(): () => void {
 async function syncReceipts() {
   if (pendingSync) return pendingSync;
   const version = sessionVersion();
-  sharedAt = Date.now();
+  const task = (async () => {
+    await shareReceipts();
+    if (isCurrentSession(version)) await attendanceReceipts.load(true);
+  })().finally(() => { if (pendingSync === task) pendingSync = null; });
+  pendingSync = task;
+  return task;
+}
+
+async function shareReceipts() {
+  if (pendingShare) return pendingShare;
+  const pending = classWatch.receipts.filter((entry) => !entry.synced && validReceipt(entry.receipt));
+  if (!pending.length) return;
+  const version = sessionVersion();
+  lastShareAt = Date.now();
   const task = (async () => {
     let failed = false;
-    for (const entry of classWatch.receipts.filter((entry) => !entry.synced && validReceipt(entry.receipt))) {
+    for (const entry of pending) {
       try {
         await api.shareAttendanceReceipt(entry.receipt);
         if (!isCurrentSession(version)) return;
@@ -237,9 +273,8 @@ async function syncReceipts() {
     }
     if (!isCurrentSession(version)) return;
     classWatch.shareError = failed ? '출석은 확인했지만 다른 기기에 기록을 공유하지 못했어요. 서버에 연결되면 다시 시도할게요.' : '';
-    await attendanceReceipts.load(true);
-  })().finally(() => { if (pendingSync === task) pendingSync = null; });
-  pendingSync = task;
+  })().finally(() => { if (pendingShare === task) pendingShare = null; });
+  pendingShare = task;
   return task;
 }
 
@@ -253,7 +288,6 @@ export function checkNow(): Promise<void> {
 }
 function onVisibility() {
   if (document.visibilityState === 'visible') {
-    sharedAt = 0;
     void checkNow();
   }
 }
@@ -265,7 +299,6 @@ function tick(automatic = true) {
     classWatch.receipts = loadSaved();
     classWatch.school = {}; classWatch.seenOpen = [];
     persist();
-    sharedAt = 0;
   }
   const cur = todaySessions(timetable.data?.slots ?? [], now).find((c) => inWindow(c, now)) ?? null;
   if (!sameClass(cur, classWatch.current)) {
@@ -280,7 +313,6 @@ function tick(automatic = true) {
   }
   if (!automatic || document.visibilityState !== 'visible') return;
   const open = active.filter((lecture) => !isAttended(lectureMark(lecture)));
-  if (now - sharedAt >= (cur || open.length ? POLL_MS : 30_000)) void syncReceipts();
   if (((cur && !isAttended(markFor(cur))) || open.length || lectures.error !== null) && now >= classWatch.nextAt && !classWatch.polling) void checkNow();
 }
 function watchedCourses(): Map<string, CourseRef> {
@@ -325,6 +357,7 @@ export function afterSubmit(submission: AttendanceSubmission) {
   classWatch.receipts = [...classWatch.receipts.filter((entry) => entry.receipt.lecture.key !== receipt.lecture.key && validReceipt(entry.receipt)), { receipt, synced: submission.synced }];
   persist();
   classWatch.shareError = submission.synced ? '' : '출석은 확인했지만 다른 기기에 기록을 공유하지 못했어요. 서버에 연결되면 다시 시도할게요.';
+  void shareReceipts();
   void syncReceipts();
   const version = sessionVersion(), day = todayKey(), ref = lectureRef(receipt.lecture, receipt.confirmedAt);
   if (ref.code) setTimeout(() => { if (isCurrentSession(version) && todayKey() === day) void checkSchool(ref); }, 1500);
@@ -333,6 +366,6 @@ export function afterSubmit(submission: AttendanceSubmission) {
 function resetClassWatch() {
   classWatch.receipts = loadSaved(); classWatch.school = {}; classWatch.seenOpen = []; classWatch.shareError = '';
   classWatch.day = todayKey(); classWatch.polling = false; classWatch.current = null; classWatch.nextAt = 0;
-  sharedAt = 0; pendingCheck = null; pendingSync = null;
+  lastShareAt = 0; pendingCheck = null; pendingSync = null; pendingShare = null;
 }
 onSessionChange(resetClassWatch);

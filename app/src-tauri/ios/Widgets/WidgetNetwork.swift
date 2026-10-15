@@ -43,13 +43,65 @@ enum WidgetAPI {
     }
 }
 
+private actor WidgetCommonSync {
+    static let shared = WidgetCommonSync()
+    private var pending: (owner: String, id: UUID, task: Task<Void, Error>)?
+
+    func refresh(owner: String, force: Bool, deadline: Date) async throws {
+        if let pending, pending.owner == owner { return try await pending.task.value }
+        let before = WidgetStore.read()
+        guard before.text("owner") == owner else { throw WidgetFailure("앱에서 다시 로그인해 주세요.") }
+        let age = HongsiClock.milliseconds() - before.number("commonCheckedAt")
+        if !force && before.number("commonCheckedAt") > 0 && age >= 0 && age < 3000 { return }
+        let id = UUID()
+        let task = Task { try await Self.load(owner: owner, deadline: deadline) }
+        pending = (owner, id, task)
+        defer { if pending?.id == id { pending = nil } }
+        try await task.value
+    }
+
+    private static func load(owner: String, deadline: Date) async throws {
+        let before = WidgetStore.read()
+        guard before.text("owner") == owner else { throw WidgetFailure("앱에서 다시 로그인해 주세요.") }
+        func fetch(_ path: String) async throws -> JSON {
+            try await WidgetAPI.call(path, owner: owner, deadline: deadline) as? JSON ?? [:]
+        }
+        let revisions = try await fetch("/api/school/revisions"), previous = before.object("schoolRevisions")
+        var patch: JSON = [:], updated: JSON = [:], applied: JSON = [:]
+        if revisions.integer("timetable") > 0 && (revisions.integer("timetable") != previous.integer("timetable") || !WidgetModel.hasTimetable(before)) {
+            let requestedAt = HongsiClock.milliseconds()
+            let saved = try await fetch("/api/school/stored?kind=timetable")
+            let colors = before.objects("slots").reduce(into: [String: String]()) { $0[$1.text("code")] = $1.text("color", "#3b82f6") }
+            patch["slots"] = saved.objects("slots").map { slot -> JSON in var value = slot; value["color"] = colors[slot.text("code")] ?? "#3b82f6"; return value }
+            patch["timetableLoaded"] = true
+            updated["timetable"] = requestedAt
+            applied["timetable"] = revisions.integer("timetable")
+        }
+        var complete = true
+        if previous["preferences"] == nil || revisions.integer("preferences") != previous.integer("preferences") || before["preferences"] == nil {
+            if let saved = try? await fetch("/api/preferences"), saved.number("updatedAt") >= before.object("updatedAt").number("preferences") {
+                patch["preferences"] = ["midnight": saved.text("midnight") == "same" ? "same" : "prev",
+                    "showUndated": saved.flag("showUndatedAssignments"), "timetableDisplay": saved.text("timetableDisplay") == "full" ? "full" : "fit",
+                    "semesterDisplay": WidgetModel.semesterDisplay(saved.text("semesterDisplay"))]
+                updated["preferences"] = saved.number("updatedAt")
+                applied["preferences"] = revisions.integer("preferences")
+            } else { complete = false }
+        }
+        patch["schoolRevisions"] = applied
+        patch["updatedAt"] = updated
+        patch["commonCheckedAt"] = complete ? HongsiClock.milliseconds() : 0
+        guard try WidgetStore.merge(owner: owner, patch: patch) else { throw WidgetFailure("앱에서 다시 로그인해 주세요.") }
+    }
+}
+
 actor WidgetSync {
     static let shared = WidgetSync()
     private var running = Set<String>()
     func refresh(_ kind: String, force: Bool = false) async {
         let resource = (kind == "ATTENDANCE" || kind.hasPrefix("TODAY")) ? "lectures" : kind == "SEAT" ? "seats" : kind == "WEEK" ? "timetable" : "calendar"
         guard !running.contains(resource) else { return }
-        let before = WidgetStore.read(), owner = before.text("owner")
+        var before = WidgetStore.read()
+        let owner = before.text("owner")
         guard !owner.isEmpty else { return }
         if resource == "seats" && WidgetModel.seatExtending(WidgetStore.state(), seat: before.object("seat"), now: Date()) { return }
         let age = HongsiClock.milliseconds() - before.object("updatedAt").number(resource)
@@ -61,21 +113,9 @@ actor WidgetSync {
         }
         var patch: JSON = [:]
         do {
-            let revisions = try await fetch("/api/school/revisions", owner: owner) as? JSON ?? [:]
-            if revisions.integer("timetable") > 0 && (revisions.integer("timetable") != before.object("schoolRevisions").integer("timetable") || !WidgetModel.hasTimetable(before)) {
-                let saved = try await fetch("/api/school/stored?kind=timetable", owner: owner) as? JSON ?? [:]
-                let colors = before.objects("slots").reduce(into: [String: String]()) { $0[$1.text("code")] = $1.text("color", "#3b82f6") }
-                patch["slots"] = saved.objects("slots").map { slot -> JSON in var value = slot; value["color"] = colors[slot.text("code")] ?? "#3b82f6"; return value }
-                patch["timetableLoaded"] = true
-            }
-            patch["schoolRevisions"] = revisions
-            var preferences = before.object("preferences"), preferencesAt = before.object("updatedAt").number("preferences")
-            if let saved = (try? await fetch("/api/preferences", owner: owner)) as? JSON, saved.number("updatedAt") >= preferencesAt {
-                preferences.merge(saved) { _, new in new }; preferencesAt = saved.number("updatedAt")
-            }
-            patch["preferences"] = ["midnight": preferences.text("midnight"), "showUndated": preferences["showUndatedAssignments"] != nil ? preferences.flag("showUndatedAssignments") : preferences.flag("showUndated"), "timetableDisplay": preferences.text("timetableDisplay"), "semesterDisplay": preferences.text("semesterDisplay")]
-            patch["updatedAt"] = ["preferences": preferencesAt]
-            if patch["slots"] != nil { var times = patch.object("updatedAt"); times["timetable"] = HongsiClock.milliseconds(); patch["updatedAt"] = times }
+            try await WidgetCommonSync.shared.refresh(owner: owner, force: force, deadline: deadline)
+            before = WidgetStore.read()
+            guard before.text("owner") == owner else { throw WidgetFailure("앱에서 다시 로그인해 주세요.") }
             if resource == "seats" {
                 let requestedAt = HongsiClock.milliseconds()
                 let response = try await fetch("/api/seats/session", owner: owner) as? JSON ?? [:]
@@ -96,32 +136,32 @@ actor WidgetSync {
                 var receiptError = ""
                 do { receipts = try await fetch("/api/attendance/receipts", owner: owner) as? [JSON] ?? [] }
                 catch { receipts = []; receiptError = error.localizedDescription }
-                var courses: [JSON] = []
-                var source = before
-                if patch["slots"] != nil { source["slots"] = patch["slots"]; source["timetableLoaded"] = true }
-                let codes = Set(WidgetModel.today(source, now: Date()).map { $0.text("code") }.filter { !$0.isEmpty })
-                for code in codes {
+                var plan = AttendanceCourseCache.plan(data: before, active: active.objects("items"), force: force, now: checkedAt)
+                var cached = plan.cache.object("items")
+                for code in plan.requests {
+                    let requestedAt = HongsiClock.milliseconds()
                     let escaped = code.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
-                    if let course = (try? await fetch("/api/attendance/course?code=" + escaped, owner: owner)) as? JSON { courses.append(course) }
+                    if let course = (try? await fetch("/api/attendance/course?code=" + escaped, owner: owner)) as? JSON {
+                        cached[code] = ["data": course, "checkedAt": requestedAt]
+                    }
                 }
-                var attendance = AttendanceSnapshot.make(slots: source.objects("slots"), active: active.objects("items"), courses: courses, receipts: receipts + pending, previous: before.object("attendance"), now: checkedAt)
-                attendance["timetableLoaded"] = WidgetModel.hasTimetable(source)
+                plan.cache["items"] = cached
+                let courses = cached.values.compactMap { ($0 as? JSON)?["data"] as? JSON }
+                let courseCheckedAt = cached.mapValues { ($0 as? JSON)?.number("checkedAt") ?? 0 }
+                patch["attendanceCourses"] = plan.cache
+                var attendance = AttendanceSnapshot.make(slots: before.objects("slots"), active: active.objects("items"), courses: courses, receipts: receipts + pending, previous: before.object("attendance"), now: checkedAt, courseCheckedAt: courseCheckedAt)
+                attendance["timetableLoaded"] = WidgetModel.hasTimetable(before)
                 attendance["receiptError"] = receiptError
                 patch["attendance"] = attendance
             } else if resource == "calendar" {
-                let display = WidgetModel.semesterDisplay(preferences.text("semesterDisplay"))
-                patch["preferences"] = [
-                    "midnight": preferences.text("midnight") == "same" ? "same" : "prev",
-                    "showUndated": preferences["showUndatedAssignments"] != nil ? preferences.flag("showUndatedAssignments") : preferences.flag("showUndated"),
-                    "timetableDisplay": preferences.text("timetableDisplay") == "full" ? "full" : "fit", "semesterDisplay": display
-                ]
+                let display = WidgetModel.semesterDisplay(before.object("preferences").text("semesterDisplay"))
                 let calendar = try await fetch("/api/calendar?refresh=1&semester=" + display, owner: owner) as? JSON ?? [:]
                 let todos = try await fetch("/api/todos", owner: owner) as? [JSON] ?? []
                 patch["deadlines"] = Self.deadlines(calendar: calendar, todos: todos, display: display)
                 patch["semesterDisplay"] = display
             }
             var times = patch.object("updatedAt")
-            if times[resource] == nil { times[resource] = HongsiClock.milliseconds() }
+            if resource != "timetable" && times[resource] == nil { times[resource] = HongsiClock.milliseconds() }
             patch["updatedAt"] = times
             patch["errors"] = [resource: ""]
         } catch {

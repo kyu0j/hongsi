@@ -71,8 +71,22 @@ object WidgetData {
                     times.put(resource, oldTimes.optLong(resource))
                 }
             }
+            val revisions = JSONObject()
+            for (resource in listOf("timetable", "preferences")) {
+                val previous = current.optJSONObject("schoolRevisions")
+                if (oldTimes.optLong(resource) == times.optLong(resource) && previous?.has(resource) == true) {
+                    revisions.put(resource, previous.get(resource))
+                }
+            }
+            next.put("schoolRevisions", revisions)
+            if (listOf("timetable", "preferences").all { oldTimes.optLong(it) == times.optLong(it) }) {
+                next.put("commonCheckedAt", current.optLong("commonCheckedAt"))
+            }
             next.put("updatedAt", times)
             next.put("pendingReceipts", current.optJSONArray("pendingReceipts") ?: JSONArray())
+            current.optJSONObject("attendanceCourses")?.takeIf {
+                it.optLong("timetableAt") == times.optLong("timetable") && oldTimes.optLong("lectures") >= times.optLong("lectures")
+            }?.let { next.put("attendanceCourses", it) }
         }
         write(context, next)
     }
@@ -81,6 +95,13 @@ object WidgetData {
         val next = read(context)
         if (owner.isBlank() || next.text("owner") != owner) return false
         discardOlderAttendance(next, patch)
+        if (patch.has("slots") && (patch.optJSONObject("updatedAt")?.optLong("timetable") ?: 0) < (next.optJSONObject("updatedAt")?.optLong("timetable") ?: 0)) {
+            patch.remove("slots")
+            patch.remove("timetableLoaded")
+            patch.optJSONObject("updatedAt")?.remove("timetable")
+            patch.optJSONObject("schoolRevisions")?.remove("timetable")
+            patch.put("commonCheckedAt", 0)
+        }
         val incomingPreferencesAt = patch.optJSONObject("updatedAt")?.optLong("preferences") ?: 0
         val preferencesAt = next.optJSONObject("updatedAt")?.optLong("preferences") ?: 0
         val display = next.optJSONObject("preferences")?.text("semesterDisplay", "current") ?: "current"
@@ -88,11 +109,13 @@ object WidgetData {
             (incomingPreferencesAt == preferencesAt && patch.getJSONObject("preferences").text("semesterDisplay", display) != display))) {
             patch.remove("preferences")
             patch.optJSONObject("updatedAt")?.remove("preferences")
+            patch.optJSONObject("schoolRevisions")?.remove("preferences")
+            patch.put("commonCheckedAt", 0)
         }
         val nextDisplay = patch.optJSONObject("preferences")?.text("semesterDisplay", display) ?: display
         if (patch.has("deadlines") && patch.text("semesterDisplay") != nextDisplay) return false
         patch.keys().forEach { key ->
-            if (key in listOf("updatedAt", "errors", "preferences")) {
+            if (key in listOf("updatedAt", "errors", "preferences", "schoolRevisions")) {
                 val values = next.optJSONObject(key) ?: JSONObject()
                 val changes = patch.getJSONObject(key)
                 changes.keys().forEach { values.put(it, changes.get(it)) }
@@ -104,9 +127,13 @@ object WidgetData {
     }
     internal fun discardOlderAttendance(current: JSONObject, patch: JSONObject) {
         val incoming = patch.optJSONObject("attendance") ?: return
-        val saved = current.optJSONObject("attendance") ?: return
-        if (incoming.optLong("checkedAt") >= saved.optLong("checkedAt")) return
+        val saved = current.optJSONObject("attendance")
+        val changedTimetable = patch.optJSONObject("attendanceCourses")?.let {
+            it.optLong("timetableAt") != (current.optJSONObject("updatedAt")?.optLong("timetable") ?: 0)
+        } ?: false
+        if (!changedTimetable && (saved == null || incoming.optLong("checkedAt") >= saved.optLong("checkedAt"))) return
         patch.remove("attendance")
+        patch.remove("attendanceCourses")
         patch.optJSONObject("updatedAt")?.remove("lectures")
         patch.optJSONObject("errors")?.remove("lectures")
     }

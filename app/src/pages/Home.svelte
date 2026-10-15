@@ -38,7 +38,6 @@
     calendar.load();
     meals.load();
     timetable.load();
-    todos.load();
   });
 
   const colors = $derived(courseColors(calendar.data?.courses ?? []));

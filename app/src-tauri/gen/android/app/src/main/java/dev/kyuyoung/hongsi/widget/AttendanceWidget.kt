@@ -140,7 +140,7 @@ internal object Widgets {
             }
             operation == "back" -> state.put("mode", "ready").put("code", "")
             operation == "refresh" -> {
-                if (!refreshing(kind)) { loading(context, kind, true); WidgetSync.enqueue(context, kind) }
+                if (!refreshing(kind)) { loading(context, kind, true); WidgetSync.enqueue(context, kind, force = true) }
                 return
             }
             else -> return

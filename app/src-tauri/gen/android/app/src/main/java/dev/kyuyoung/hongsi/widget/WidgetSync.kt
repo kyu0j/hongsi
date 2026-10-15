@@ -39,7 +39,55 @@ internal object WidgetSync {
     val refreshWorker = Executors.newFixedThreadPool(3)
     val main = Handler(Looper.getMainLooper())
     val locks = ConcurrentHashMap<String, ReentrantLock>()
+    private val commonLock = ReentrantLock()
     private const val PERIODIC = 7400
+    private fun refreshCommon(context: Context, owner: String, force: Boolean) {
+        val started = System.currentTimeMillis()
+        commonLock.lock()
+        try {
+            val before = WidgetData.read(context)
+            if (before.text("owner") != owner) throw WidgetFailure(401, "앱에서 다시 로그인해 주세요.")
+            val checkedAt = before.optLong("commonCheckedAt")
+            val age = started - checkedAt
+            if (checkedAt > 0 && (checkedAt >= started || (!force && age in 0 until 3000))) return
+            fun get(path: String) = WidgetNative.api(context, path, owner = owner).body() as JSONObject
+            val revisions = get("/api/school/revisions")
+            val previous = before.optJSONObject("schoolRevisions") ?: JSONObject()
+            val applied = JSONObject()
+            val patch = JSONObject()
+            val updated = JSONObject()
+            if (revisions.optLong("timetable") > 0 && (revisions.optLong("timetable") != previous.optLong("timetable") || !WidgetData.hasTimetable(before))) {
+                val requestedAt = System.currentTimeMillis()
+                val saved = get("/api/school/stored?kind=timetable")
+                val colors = before.array("slots").associate { it.text("code") to it.text("color").ifBlank { "#3b82f6" } }
+                patch.put("slots", JSONArray(saved.array("slots").map { it.put("color", colors[it.text("code")] ?: "#3b82f6") }))
+                    .put("timetableLoaded", true)
+                updated.put("timetable", requestedAt)
+                applied.put("timetable", revisions.optLong("timetable"))
+            }
+            var complete = true
+            if (!previous.has("preferences") || revisions.optLong("preferences") != previous.optLong("preferences") || !before.has("preferences")) {
+                try {
+                    val saved = get("/api/preferences")
+                    if (saved.optLong("updatedAt") >= (before.optJSONObject("updatedAt")?.optLong("preferences") ?: 0)) {
+                        patch.put("preferences", JSONObject()
+                            .put("midnight", if (saved.text("midnight") == "same") "same" else "prev")
+                            .put("showUndated", saved.optBoolean("showUndatedAssignments"))
+                            .put("timetableDisplay", if (saved.text("timetableDisplay") == "full") "full" else "fit")
+                            .put("semesterDisplay", WidgetData.semesterDisplay(saved.text("semesterDisplay"))))
+                        updated.put("preferences", saved.optLong("updatedAt"))
+                        applied.put("preferences", revisions.optLong("preferences"))
+                    } else complete = false
+                } catch (e: Exception) {
+                    if (e is WidgetFailure && e.status == 401) throw e
+                    complete = false
+                }
+            }
+            patch.put("schoolRevisions", applied).put("updatedAt", updated)
+                .put("commonCheckedAt", if (complete) System.currentTimeMillis() else 0)
+            if (!WidgetData.merge(context, owner, patch)) throw WidgetFailure(401, "앱에서 다시 로그인해 주세요.")
+        } finally { commonLock.unlock() }
+    }
     fun installed(context: Context) = WidgetKind.entries.filter { Widgets.ids(context, it).isNotEmpty() }
     private fun networkKinds(context: Context) = installed(context)
     fun schedule(context: Context) {
@@ -48,9 +96,9 @@ internal object WidgetSync {
         if (scheduler.getPendingJob(PERIODIC) == null) scheduler.schedule(JobInfo.Builder(PERIODIC, ComponentName(context, WidgetJobService::class.java))
             .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).setPeriodic(15 * 60_000L).setPersisted(true).build())
     }
-    fun enqueue(context: Context, kind: WidgetKind) {
+    fun enqueue(context: Context, kind: WidgetKind, force: Boolean = false) {
         schedule(context)
-        val extras = PersistableBundle().apply { putString("kind", kind.name) }
+        val extras = PersistableBundle().apply { putString("kind", kind.name); putBoolean("force", force) }
         context.getSystemService(JobScheduler::class.java).schedule(JobInfo.Builder(PERIODIC + 1 + kind.ordinal, ComponentName(context, WidgetJobService::class.java))
             .setExtras(extras).setOverrideDeadline(0).build())
     }
@@ -59,11 +107,11 @@ internal object WidgetSync {
             enqueue(context, WidgetKind.ATTENDANCE)
         }
     }
-    fun refresh(context: Context, kind: WidgetKind) {
+    fun refresh(context: Context, kind: WidgetKind, force: Boolean = false) {
         val resource = when { kind.attendanceData -> "lectures"; kind.deadlines -> "calendar"; kind == WidgetKind.SEAT -> "seats"; else -> "timetable" }
         val lock = locks.getOrPut(resource) { ReentrantLock() }
         if (!lock.tryLock()) return
-        val before = WidgetData.read(context)
+        var before = WidgetData.read(context)
         val owner = before.text("owner")
         if (owner.isBlank()) { lock.unlock(); return }
         val patch = JSONObject()
@@ -74,37 +122,12 @@ internal object WidgetSync {
             return WidgetNative.api(context, path, owner = owner).body()
         }
         try {
-            var preferences = before.optJSONObject("preferences") ?: JSONObject()
-            var preferencesAt = before.optJSONObject("updatedAt")?.optLong("preferences") ?: 0
-            run {
-                val revisions = get("/api/school/revisions") as JSONObject
-                val previousRevision = before.optJSONObject("schoolRevisions")?.optLong("timetable") ?: 0
-                if (revisions.optLong("timetable") > 0 && (revisions.optLong("timetable") != previousRevision || !WidgetData.hasTimetable(before))) {
-                    val saved = get("/api/school/stored?kind=timetable") as JSONObject
-                    val colors = before.array("slots").associate { it.text("code") to it.text("color").ifBlank { "#3b82f6" } }
-                    val slots = saved.array("slots").map { slot -> slot.put("color", colors[slot.text("code")] ?: "#3b82f6") }
-                    patch.put("slots", JSONArray(slots)).put("timetableLoaded", true)
-                    updated.put("timetable", System.currentTimeMillis())
-                }
-                patch.put("schoolRevisions", revisions)
-            }
-            run {
-                runCatching { get("/api/preferences") as JSONObject }.onSuccess { saved ->
-                    if (saved.optLong("updatedAt") > preferencesAt) {
-                        preferences = saved
-                        preferencesAt = saved.optLong("updatedAt")
-                    }
-                }.onFailure { if (it is WidgetFailure && it.status == 401) throw it }
-                patch.put("preferences", JSONObject()
-                    .put("midnight", if (preferences.text("midnight") == "same") "same" else "prev")
-                    .put("showUndated", preferences.optBoolean("showUndatedAssignments", preferences.optBoolean("showUndated")))
-                    .put("timetableDisplay", if (preferences.text("timetableDisplay") == "full") "full" else "fit")
-                    .put("semesterDisplay", WidgetData.semesterDisplay(preferences.text("semesterDisplay"))))
-                updated.put("preferences", preferencesAt)
-            }
+            refreshCommon(context, owner, force)
+            before = WidgetData.read(context)
+            if (before.text("owner") != owner) throw WidgetFailure(401, "앱에서 다시 로그인해 주세요.")
             when (resource) {
                 "lectures" -> {
-                    val slots = if (patch.has("slots")) patch.array("slots") else before.array("slots")
+                    val slots = before.array("slots")
                     val active = (get("/api/attendance/active") as JSONObject).array("items")
                     val checkedAt = System.currentTimeMillis()
                     updated.put(resource, checkedAt)
@@ -113,14 +136,26 @@ internal object WidgetSync {
                     patch.put("pendingReceipts", JSONArray(unshared))
                     val shared = runCatching { (get("/api/attendance/receipts") as JSONArray).objects() }
                     val receipts = shared.getOrDefault(emptyList()) + pending
-                    val courses = slots.filter { it.optInt("weekday") == weekday() }.map { it.text("code") }.filter(String::isNotBlank).distinct().mapNotNull { code ->
-                        runCatching { get("/api/attendance/course?code=" + android.net.Uri.encode(code)) as JSONObject }.getOrNull()
+                    val plan = WidgetAttendanceCourses.plan(before, active, force, checkedAt)
+                    val cached = plan.cache.getJSONObject("items")
+                    for (code in plan.requests) {
+                        val requestedAt = System.currentTimeMillis()
+                        runCatching { get("/api/attendance/course?code=" + android.net.Uri.encode(code)) as JSONObject }.onSuccess { course ->
+                            cached.put(code, JSONObject().put("data", course).put("checkedAt", requestedAt))
+                        }
                     }
-                    patch.put("attendance", WidgetAttendanceSnapshot.make(slots, active, courses, receipts, before.optJSONObject("attendance"), checkedAt)
-                        .put("timetableLoaded", patch.optBoolean("timetableLoaded") || WidgetData.hasTimetable(before)).put("receiptError", shared.exceptionOrNull()?.message.orEmpty()))
+                    val courseCheckedAt = JSONObject()
+                    val courses = cached.keys().asSequence().map { code ->
+                        val entry = cached.getJSONObject(code)
+                        courseCheckedAt.put(code, entry.getLong("checkedAt"))
+                        entry.getJSONObject("data")
+                    }.toList()
+                    patch.put("attendanceCourses", plan.cache)
+                    patch.put("attendance", WidgetAttendanceSnapshot.make(slots, active, courses, receipts, before.optJSONObject("attendance"), checkedAt, courseCheckedAt)
+                        .put("timetableLoaded", WidgetData.hasTimetable(before)).put("receiptError", shared.exceptionOrNull()?.message.orEmpty()))
                 }
                 "calendar" -> {
-                    val display = patch.getJSONObject("preferences").text("semesterDisplay")
+                    val display = WidgetData.semesterDisplay(before.optJSONObject("preferences")?.text("semesterDisplay").orEmpty())
                     val data = get("/api/calendar?refresh=1&semester=$display") as JSONObject
                     val todos = (get("/api/todos") as JSONArray).objects()
                     val courses = data.array("courses")
@@ -151,7 +186,7 @@ internal object WidgetSync {
                 }
                 "seats" -> patch.put("seat", (get("/api/seats/session") as JSONObject).opt("session") ?: JSONObject.NULL)
             }
-            if (!updated.has(resource)) updated.put(resource, System.currentTimeMillis())
+            if (resource != "timetable" && !updated.has(resource)) updated.put(resource, System.currentTimeMillis())
             patch.put("updatedAt", updated)
             patch.put("errors", JSONObject().put(resource, ""))
         } catch (e: Exception) {
@@ -191,7 +226,7 @@ class WidgetJobService : JobService() {
         kinds.forEach(::updateLoading)
         kinds.forEach { kind ->
             WidgetSync.refreshWorker.execute {
-                try { if (!run.stopped) WidgetSync.refresh(applicationContext, kind) }
+                try { if (!run.stopped) WidgetSync.refresh(applicationContext, kind, params.extras.getBoolean("force")) }
                 finally { WidgetSync.main.post {
                     if (runs[params.jobId] === run) {
                         run.pending.remove(kind)
