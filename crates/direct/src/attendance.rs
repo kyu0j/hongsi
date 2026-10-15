@@ -69,7 +69,7 @@ impl Direct {
         let s = self.current().await?;
         let mut map = s.courses.lock().await;
         if let Some((at, data)) = map.get(code) {
-            if at.elapsed() < Duration::from_secs(60) {
+            if at.elapsed() < Duration::from_secs(3) {
                 return Ok(json!(data));
             }
         }
