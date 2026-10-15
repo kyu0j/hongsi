@@ -90,7 +90,7 @@ pub(crate) async fn attendance_course(user: CurrentUser, Query(q): Query<CourseQ
     }
     let mut cache = user.session.course_cache.lock().await;
     if let Some((at, data)) = cache.get(code) {
-        if at.elapsed() < Duration::from_secs(60) {
+        if at.elapsed() < Duration::from_secs(3) {
             return Ok(Json(data.clone()));
         }
     }

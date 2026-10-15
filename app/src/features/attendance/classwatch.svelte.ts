@@ -8,7 +8,6 @@ import type { ActiveLecture, AttendanceCourse, AttendanceMark, AttendanceReceipt
 const WATCH_BEFORE = 3 * 60_000;
 const WATCH_AFTER = 10 * 60_000;
 export const POLL_MS = 10_000;
-const STATUS_MS = 60_000;
 const MIN_SPIN_MS = 700;
 const KST = 9 * 3600_000;
 const STORE = 'attendance-confirmed';
@@ -195,7 +194,6 @@ export function attendanceWidgetSnapshot() {
 function persist() { writeUserData(STORE, $state.snapshot(classWatch.receipts)); }
 let users = 0;
 let timer: ReturnType<typeof setInterval> | undefined;
-let statusAt = 0;
 let sharedAt = 0;
 let pendingCheck: Promise<void> | null = null;
 let pendingSync: Promise<void> | null = null;
@@ -267,13 +265,12 @@ function tick(automatic = true) {
     classWatch.receipts = loadSaved();
     classWatch.school = {}; classWatch.seenOpen = [];
     persist();
-    sharedAt = 0; statusAt = 0;
+    sharedAt = 0;
   }
   const cur = todaySessions(timetable.data?.slots ?? [], now).find((c) => inWindow(c, now)) ?? null;
   if (!sameClass(cur, classWatch.current)) {
     classWatch.current = cur;
     classWatch.nextAt = Math.max(now, lectures.at + POLL_MS);
-    statusAt = 0;
   }
   const active = dayKey(lectures.at) === todayKey() ? (lectures.data?.items ?? []) : [];
   if (!lectures.error && lectures.at >= now - 2 * POLL_MS) {
@@ -284,18 +281,30 @@ function tick(automatic = true) {
   if (!automatic || document.visibilityState !== 'visible') return;
   const open = active.filter((lecture) => !isAttended(lectureMark(lecture)));
   if (now - sharedAt >= (cur || open.length ? POLL_MS : 30_000)) void syncReceipts();
-  const watched = cur ?? (open[0] ? lectureRef(open[0]) : null);
-  if (watched?.code && (statusAt === 0 || now - statusAt >= STATUS_MS)) {
-    statusAt = now;
-    void checkSchool(watched);
-  }
   if (((cur && !isAttended(markFor(cur))) || open.length || lectures.error !== null) && now >= classWatch.nextAt && !classWatch.polling) void checkNow();
+}
+function watchedCourses(): Map<string, CourseRef> {
+  const courses = new Map<string, CourseRef>();
+  const current = classWatch.current;
+  if (current?.code) courses.set(current.code, current);
+  if (dayKey(lectures.at) === todayKey()) {
+    for (const lecture of lectures.data?.items ?? []) {
+      if (isAttended(lectureMark(lecture))) continue;
+      const course = lectureRef(lecture);
+      if (course.code) courses.set(course.code, course);
+    }
+  }
+  return courses;
 }
 async function poll() {
   const version = sessionVersion();
   classWatch.polling = true;
   const started = Date.now();
-  await Promise.all([lectures.load(true), syncReceipts()]);
+  const courses = watchedCourses();
+  await Promise.all([lectures.load(true), syncReceipts(), ...Array.from(courses.values(), checkSchool)]);
+  if (!isCurrentSession(version)) return;
+  tick(false);
+  await Promise.all(Array.from(watchedCourses()).filter(([code]) => !courses.has(code)).map(([, course]) => checkSchool(course)));
   if (!isCurrentSession(version)) return;
   tick(false);
   const rest = MIN_SPIN_MS - (Date.now() - started);
@@ -324,6 +333,6 @@ export function afterSubmit(submission: AttendanceSubmission) {
 function resetClassWatch() {
   classWatch.receipts = loadSaved(); classWatch.school = {}; classWatch.seenOpen = []; classWatch.shareError = '';
   classWatch.day = todayKey(); classWatch.polling = false; classWatch.current = null; classWatch.nextAt = 0;
-  statusAt = 0; sharedAt = 0; pendingCheck = null; pendingSync = null;
+  sharedAt = 0; pendingCheck = null; pendingSync = null;
 }
 onSessionChange(resetClassWatch);
