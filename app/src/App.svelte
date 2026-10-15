@@ -99,7 +99,7 @@
     try {
       const r = await api.me();
       const remembered = isApp ? await native.autoLoginEnabled().catch(() => false) : r.remembered;
-      startSession(r.profile, remembered);
+      startSession(r.profile, remembered, { restore: !isApp });
       bootError = '';
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {

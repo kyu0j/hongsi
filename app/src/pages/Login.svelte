@@ -53,7 +53,7 @@
       password = '';
       setPref('last-id', studentId);
       setPref('remember', keepLoggedIn);
-      startSession(res.profile, keepLoggedIn, studentId);
+      startSession(res.profile, keepLoggedIn, { id: studentId });
       api
         .me()
         .then((r) => {

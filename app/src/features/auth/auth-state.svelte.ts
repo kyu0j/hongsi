@@ -20,9 +20,9 @@ export function onBeforeLogout(prepare: () => Promise<void>) {
   return () => logoutPreparations.delete(prepare);
 }
 
-export function startSession(profile: Profile, remembered: boolean, id = profile.studentId) {
-  app.account = id.trim().toUpperCase() || null;
-  setSessionUser(app.account);
+export function startSession(profile: Profile, remembered: boolean, options: { id?: string; restore?: boolean } = {}) {
+  app.account = (options.id ?? profile.studentId).trim().toUpperCase() || null;
+  setSessionUser(app.account, options.restore ? 'restore' : 'change');
   app.notice = '';
   app.remembered = remembered;
   app.profile = profile;
