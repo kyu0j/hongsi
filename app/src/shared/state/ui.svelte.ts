@@ -32,7 +32,7 @@ export const TABS: { id: Tab; label: string; icon: string }[] = [
 ];
 
 export const focus = $state({ item: null as string | null, todo: null as number | null, notices: false, notice: null as ClassNotification | null, timetable: false, seatBuilding: null as string | null, endSeat: null as number | null });
-onSessionChange(() => {
+onSessionChange((reason) => {
   focus.item = null;
   focus.todo = null;
   focus.notices = false;
@@ -41,9 +41,9 @@ onSessionChange(() => {
   focus.seatBuilding = null;
   focus.endSeat = null;
   toasts.splice(0);
-  route.tab = 'home';
+  route.tab = reason === 'restore' ? current() : 'home';
   if (typeof window !== 'undefined') {
-    history.replaceState(history.state, '', '#/home');
+    if (reason !== 'restore') history.replaceState(history.state, '', '#/home');
     window.scrollTo({ top: 0 });
     document.querySelector('.scroller')?.scrollTo({ top: 0 });
   }

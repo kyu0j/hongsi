@@ -1,6 +1,7 @@
 let version = 0;
 let user: string | null = null;
-const listeners = new Set<() => void>();
+type SessionChange = 'change' | 'restore';
+const listeners = new Set<(reason: SessionChange) => void>();
 
 export class StaleSessionError extends Error {
   constructor() {
@@ -26,15 +27,17 @@ export async function inSession<T>(job: (check: () => void) => Promise<T>): Prom
   }
 }
 
-export function onSessionChange(fn: () => void) {
+export function onSessionChange(fn: (reason: SessionChange) => void) {
   listeners.add(fn);
   return () => listeners.delete(fn);
 }
 
-export function setSessionUser(id: string | null) {
-  user = id?.trim().toUpperCase() || null;
+export function setSessionUser(id: string | null, reason: SessionChange = 'change') {
+  const next = id?.trim().toUpperCase() || null;
+  const change = reason === 'restore' && user === null && next !== null ? 'restore' : 'change';
+  user = next;
   version += 1;
-  listeners.forEach((fn) => fn());
+  listeners.forEach((fn) => fn(change));
 }
 
 const prefix = () => user ? `hc:user:${encodeURIComponent(user)}:` : null;
