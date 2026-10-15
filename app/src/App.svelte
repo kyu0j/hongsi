@@ -24,6 +24,7 @@
   import { app, endSession, logoutSession, startSession } from './features/auth/auth-state.svelte';
   import { calendar, ensureCalendarArchive, refreshCurrentCalendar } from './features/calendar/calendar-resources.svelte';
   import { lectures, timetable, refreshTimetableForTerm } from './features/attendance/attendance-resources.svelte';
+  import { watchAttendanceReceipts } from './features/attendance/classwatch.svelte';
   import { seatSession } from './features/seats/seat-resources.svelte';
   import { todos } from './features/calendar/todo-resource.svelte';
   import { TABS, go, openSeats, route, toast } from './shared/state/ui.svelte';
@@ -142,7 +143,7 @@
     const refresh = async (force = true) => {
       if (app.loggingOut || document.visibilityState !== 'visible' || Date.now() - last < 30_000) return;
       last = Date.now();
-      await Promise.all([refreshCurrentCalendar(force), todos.load(true), seatSession.load(true)]);
+      await Promise.all([refreshCurrentCalendar(force), seatSession.load(true)]);
       await refreshNotifications();
       await refreshBackground();
     };
@@ -187,7 +188,8 @@
     if (!app.account || app.loggingOut) return;
     return untrack(() => {
       const stopCalendar = watchCalendarState();
-      return () => { stopCalendar(); };
+      const stopAttendance = watchAttendanceReceipts();
+      return () => { stopCalendar(); stopAttendance(); };
     });
   });
 

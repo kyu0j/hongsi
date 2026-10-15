@@ -7,6 +7,7 @@
   import { handleAuthError } from '../features/auth/auth-state.svelte';
   import { seatSession, seats } from '../features/seats/seat-resources.svelte';
   import { isCurrentSession, sessionVersion } from '../shared/state/session';
+  import { watchVisibleRefresh } from '../shared/state/visible-refresh';
   import { focus, toast, toastOnce } from '../shared/state/ui.svelte';
   import type { RecentSeat, Room, SeatCell } from '../shared/types';
   import Icon from '../shared/ui/Icon.svelte';
@@ -33,10 +34,8 @@
   let busy = $state(false);
 
   onMount(() => {
-    seats.load();
     seatSession.load();
-    const t = setInterval(() => seats.load(true), 60_000);
-    return () => clearInterval(t);
+    return watchVisibleRefresh(60_000, (periodic) => seats.load(periodic));
   });
 
   const data = $derived(seats.data);
@@ -47,18 +46,20 @@
   const buildingFailed = $derived(!!current && !!data?.failedBuildings?.includes(current.id));
   const buildingUpdatedAt = $derived(current ? data?.buildingUpdatedAt?.[current.id] ?? data?.fetchedAt : undefined);
   const recentSet = $derived(new Set(recent.map((r) => r.seatNo)));
+  const recentRoom = $derived(current && room ? `${current.id}:${room.no}` : '');
 
   $effect(() => {
-    if (!current || !room) return;
-    const [b, r] = [current.id, room.no];
-    const load = () =>
-      api
-        .recentSeats(b, r)
-        .then((list) => (recent = list))
-        .catch(() => (recent = []));
-    load();
-    const t = setInterval(load, 60_000);
-    return () => clearInterval(t);
+    if (!recentRoom) return;
+    const [b, r] = recentRoom.split(':');
+    let disposed = false;
+    recent = [];
+    const stop = watchVisibleRefresh(60_000, async () => {
+      try {
+        const list = await api.recentSeats(b, Number(r));
+        if (!disposed) recent = list;
+      } catch { if (!disposed) recent = []; }
+    });
+    return () => { disposed = true; stop(); };
   });
 
   function selectBuilding(id: string) {

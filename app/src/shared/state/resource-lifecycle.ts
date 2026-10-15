@@ -18,5 +18,5 @@ onReconnect((what) => {
   if (!app.profile || app.loggingOut) return;
   const jobs = allResources.filter((r) => r.error !== null && (r !== timetable || r.data === null) && (what === 'server' || r.trouble === 'school'));
   if (what === 'server' && isApp && calendar.data && !jobs.includes(calendar)) jobs.push(calendar);
-  return Promise.all(jobs.map((r) => r.load(true)));
+  return Promise.all(jobs.filter((r) => r !== todos || !jobs.includes(calendar)).map((r) => r.load(true)));
 });

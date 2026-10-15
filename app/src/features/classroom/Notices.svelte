@@ -6,6 +6,7 @@
   import { handleAuthError } from '../auth/auth-state.svelte';
   import { notices } from './notice-resource.svelte';
   import { readUserData, writeUserData } from '../../shared/state/session';
+  import { watchVisibleRefresh } from '../../shared/state/visible-refresh';
   import { focus, go, toastOnce } from '../../shared/state/ui.svelte';
   import type { ClassNotification } from '../../shared/types';
   import EmptyState from '../../shared/ui/EmptyState.svelte';
@@ -140,23 +141,8 @@
     }
   }
 
-  const onVisible = () => {
-    if (document.visibilityState === 'visible') void syncSeen();
-  };
-
-  onMount(() => {
-    notices.load();
-    void syncSeen();
-    const t = setInterval(() => {
-      notices.load();
-      void syncSeen();
-    }, 5 * 60_000);
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      clearInterval(t);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  });
+  onMount(() => watchVisibleRefresh(5 * 60_000, (periodic) =>
+    Promise.all([notices.load(periodic), syncSeen()])));
 </script>
 
 <button class="bell" onclick={show} aria-label={unread ? `새 알림 ${unread}개` : '알림'}>

@@ -15,6 +15,8 @@ let calendarSemesterDisplay: SemesterDisplay = 'current';
 let storedDisplay: SemesterDisplay | null = null;
 let stateRevision = 0;
 let currentResponseRevision = 0;
+let schoolReadRevision = 0;
+let todosReadRevision = 0;
 const schoolRefresh = new Set<SemesterDisplay>();
 const stateChanges = new Map<string, { revision: number; patch: ItemPatch }>();
 const pending = new Map<SemesterDisplay, { job: Promise<CalendarData>; controller: AbortController }>();
@@ -27,6 +29,18 @@ const cached = (display: SemesterDisplay) => {
 };
 export const calendarArchive = $state({ loading: false, updating: false, ready: false, error: '', updatedAt: 0 });
 let archiveJob: Promise<CalendarData> | null = null;
+
+async function withCalendarTodos<T>(job: Promise<T>, force = false): Promise<T> {
+  const version = sessionVersion();
+  try { return await job; }
+  finally {
+    if (isCurrentSession(version)) {
+      const changed = schoolReadRevision !== todosReadRevision;
+      todosReadRevision = schoolReadRevision;
+      await (changed ? todos.refresh() : todos.load(force));
+    }
+  }
+}
 
 function currentData(data: CalendarData): CalendarData | null {
   if (!data.currentTerm) return null;
@@ -108,7 +122,7 @@ async function fetchMode(display: SemesterDisplay, refresh = false, storedOnly =
       if (display === 'current') currentResponseRevision++;
       store(data, Date.now(), display === 'all' && currentResponseRevision !== currentStarted);
       data = cached(display)?.data ?? data;
-      void todos.refresh();
+      schoolReadRevision++;
     }
     return data;
   })().finally(() => { if (pending.get(display)?.job === job) pending.delete(display); });
@@ -128,6 +142,10 @@ async function fetchCalendar(): Promise<CalendarData> {
 }
 
 class CalendarResource extends Resource<CalendarData> {
+  override load(force = false): Promise<void> {
+    return withCalendarTodos(super.load(force), force);
+  }
+
   override get stale() {
     return calendarSemesterDisplay === 'all' ? this.data === null : super.stale;
   }
@@ -199,8 +217,8 @@ export async function refreshCurrentCalendar(force = false, refreshSchool = fals
   if (calendarSemesterDisplay === 'current' && !refreshSchool) return calendar.load(force);
   const version = sessionVersion();
   const current = cached('current');
-  if (!force && current && Date.now() - current.at < 5 * MIN) return;
-  await fetchMode('current', refreshSchool);
+  if (!force && current && Date.now() - current.at < 5 * MIN) return todos.load();
+  await withCalendarTodos(fetchMode('current', refreshSchool), force);
   if (isCurrentSession(version)) showStored();
 }
 
@@ -224,7 +242,7 @@ async function collectArchive(refresh: boolean, readOnly = false): Promise<Calen
       calendarArchive.ready = true;
       calendarArchive.error = data.failedCourseIds?.length ? '일부 과목의 정보를 불러오지 못했어요.' : '';
       showStored();
-      void todos.refresh();
+      schoolReadRevision++;
     }
     return data;
   })().catch((e) => {
@@ -239,12 +257,12 @@ async function collectArchive(refresh: boolean, readOnly = false): Promise<Calen
 }
 
 export async function ensureCalendarArchive(): Promise<void> {
-  try { await collectArchive(false); }
+  try { await withCalendarTodos(collectArchive(false)); }
   catch (e) { handleAuthError(e); }
 }
 
 export function refreshCalendarArchiveData(): Promise<CalendarData> {
-  return collectArchive(true);
+  return withCalendarTodos(collectArchive(true), true);
 }
 
 export function applyCalendarState(state: CalendarState): boolean {
@@ -306,6 +324,8 @@ onSessionChange(() => {
   stateChanges.clear();
   stateRevision++;
   currentResponseRevision = 0;
+  schoolReadRevision = 0;
+  todosReadRevision = 0;
   schoolRefresh.clear();
   storedDisplay = null;
   archiveJob = null;

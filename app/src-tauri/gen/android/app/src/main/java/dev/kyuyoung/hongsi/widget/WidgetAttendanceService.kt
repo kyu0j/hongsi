@@ -183,7 +183,7 @@ class WidgetAttendanceService : Service() {
                     finish((it as? WidgetFailure)?.message ?: "위젯을 새로고침해 주세요.")
                 }
                 WidgetNavigation.changed = true
-                WidgetSync.enqueue(context, WidgetKind.ATTENDANCE)
+                WidgetSync.enqueue(context, WidgetKind.ATTENDANCE, force = true)
             }
         }
     }

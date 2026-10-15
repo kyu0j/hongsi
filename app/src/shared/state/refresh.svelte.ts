@@ -4,7 +4,6 @@ import { calendar } from '../../features/calendar/calendar-resources.svelte';
 import { meals } from '../../features/meals/meal-resource.svelte';
 import { notices } from '../../features/classroom/notice-resource.svelte';
 import { seats, seatSession } from '../../features/seats/seat-resources.svelte';
-import { todos } from '../../features/calendar/todo-resource.svelte';
 import { isCurrentSession, onSessionChange, sessionVersion } from './session';
 import { TABS, type Tab } from './ui.svelte';
 
@@ -23,8 +22,8 @@ export function refreshTab(tab: Tab): Promise<void> {
   state.slow = false;
   const slow = setTimeout(() => { if (isCurrentSession(version)) state.slow = true; }, 2500);
   const jobs = {
-    home: [seatSession, seats, calendar, meals, todos],
-    calendar: [calendar, todos], seats: [seats, seatSession],
+    home: [seatSession, seats, calendar, meals],
+    calendar: [calendar], seats: [seats, seatSession],
     attendance: [attendance], meals: [meals],
   }[tab];
   if (tab === 'home') { void timetable.load(); void notices.load(); }

@@ -108,8 +108,20 @@ enum WidgetStore {
                         if field == "deadlines" { next["semesterDisplay"] = previous["semesterDisplay"] }
                     }
                 }
+                var revisions: JSON = [:]
+                for resource in ["timetable", "preferences"] where oldTimes.number(resource) == times.number(resource) {
+                    revisions[resource] = previous.object("schoolRevisions")[resource]
+                }
+                next["schoolRevisions"] = revisions
+                if ["timetable", "preferences"].allSatisfy({ oldTimes.number($0) == times.number($0) }) {
+                    next["commonCheckedAt"] = previous["commonCheckedAt"]
+                }
                 next["updatedAt"] = times
                 next["pendingReceipts"] = previous.objects("pendingReceipts")
+                if let cached = previous["attendanceCourses"] as? JSON,
+                   cached.number("timetableAt") == times.number("timetable"), oldTimes.number("lectures") >= times.number("lectures") {
+                    next["attendanceCourses"] = cached
+                }
             }
             try writeUnlocked(applySemesterPolicy(next), "widgets")
         }
@@ -120,20 +132,34 @@ enum WidgetStore {
             guard !owner.isEmpty, data.text("owner") == owner else { return false }
             var patch = patch
             discardOlderAttendance(current: data, patch: &patch)
+            if patch["slots"] != nil && patch.object("updatedAt").number("timetable") < data.object("updatedAt").number("timetable") {
+                patch.removeValue(forKey: "slots")
+                patch.removeValue(forKey: "timetableLoaded")
+                for key in ["updatedAt", "schoolRevisions"] {
+                    var values = patch.object(key); values.removeValue(forKey: "timetable"); patch[key] = values
+                }
+                patch["commonCheckedAt"] = 0
+            }
             if patch["seat"] != nil && patch.object("updatedAt").number("seats") < data.object("updatedAt").number("seats") {
                 patch.removeValue(forKey: "seat")
                 for key in ["updatedAt", "errors"] {
                     var values = patch.object(key); values.removeValue(forKey: "seats"); patch[key] = values
                 }
             }
-            if patch.object("updatedAt").number("preferences") < data.object("updatedAt").number("preferences") {
+            let currentDisplay = data.object("preferences").text("semesterDisplay", "current")
+            let incomingPreferencesAt = patch.object("updatedAt").number("preferences"), preferencesAt = data.object("updatedAt").number("preferences")
+            if patch["preferences"] != nil && (incomingPreferencesAt < preferencesAt ||
+                (incomingPreferencesAt == preferencesAt && patch.object("preferences").text("semesterDisplay", currentDisplay) != currentDisplay)) {
                 patch.removeValue(forKey: "preferences")
-                var times = patch.object("updatedAt"); times.removeValue(forKey: "preferences"); patch["updatedAt"] = times
+                for key in ["updatedAt", "schoolRevisions"] {
+                    var values = patch.object(key); values.removeValue(forKey: "preferences"); patch[key] = values
+                }
+                patch["commonCheckedAt"] = 0
             }
             let display = patch.object("preferences").text("semesterDisplay", data.object("preferences").text("semesterDisplay", "current"))
             if patch["deadlines"] != nil && patch.text("semesterDisplay") != display { return false }
             for (key, value) in patch {
-                if ["updatedAt", "errors", "preferences"].contains(key), let changes = value as? JSON {
+                if ["updatedAt", "errors", "preferences", "schoolRevisions"].contains(key), let changes = value as? JSON {
                     var values = data.object(key); changes.forEach { values[$0.key] = $0.value }; data[key] = values
                 } else { data[key] = value }
             }
@@ -141,9 +167,13 @@ enum WidgetStore {
         }
     }
     static func discardOlderAttendance(current: JSON, patch: inout JSON) {
+        let changedTimetable = (patch["attendanceCourses"] as? JSON).map {
+            $0.number("timetableAt") != current.object("updatedAt").number("timetable")
+        } ?? false
         guard patch["attendance"] != nil,
-              patch.object("attendance").number("checkedAt") < current.object("attendance").number("checkedAt") else { return }
+              changedTimetable || patch.object("attendance").number("checkedAt") < current.object("attendance").number("checkedAt") else { return }
         patch.removeValue(forKey: "attendance")
+        patch.removeValue(forKey: "attendanceCourses")
         for key in ["updatedAt", "errors"] {
             var values = patch.object(key); values.removeValue(forKey: "lectures"); patch[key] = values
         }

@@ -51,7 +51,7 @@ enum AttendanceSnapshot {
             }
         }.sorted { $0.number("at") < $1.number("at") }
     }
-    static func make(slots: [JSON], active: [JSON], courses: [JSON], receipts: [JSON], previous: JSON, now: Date = Date()) -> JSON {
+    static func make(slots: [JSON], active: [JSON], courses: [JSON], receipts: [JSON], previous: JSON, now: Date = Date(), courseCheckedAt: JSON = [:]) -> JSON {
         let today = HongsiClock.text(now), ms = HongsiClock.milliseconds(now)
         let sessions = sessions(slots: slots, now: now)
         func reference(_ lecture: JSON, at: Double) -> JSON {
@@ -94,7 +94,9 @@ enum AttendanceSnapshot {
                 let lecture = $0.object("lecture")
                 return (!item.text("key").isEmpty && lecture.text("key") == item.text("key")) || identity(reference(lecture, at: $0.number("confirmedAt")), now: now) == identity(item, now: now)
             }
-            if let entry, !label.isEmpty, receipt == nil || ms > receipt!.number("confirmedAt") { return ["kind": entry.text("kind"), "label": label, "source": "school"] }
+            let course = courses.first { sameCourse($0, item) }
+            let schoolAt = courseCheckedAt.number(course?.text("code") ?? "", ms)
+            if let entry, !label.isEmpty, receipt == nil || schoolAt > receipt!.number("confirmedAt") { return ["kind": entry.text("kind"), "label": label, "source": "school"] }
             return receipt.map { ["kind": $0.text("kind"), "label": labels[$0.text("kind")] ?? "", "source": "app"] }
         }
         let opened = active.map { lecture -> JSON in
@@ -109,6 +111,38 @@ enum AttendanceSnapshot {
                     value["unrecorded"] = ["planned", "none"].contains(entry(item)?.text("kind") ?? "")
                     value["seenOpen"] = seen.contains(identity(item, now: now)); return value
                 }, "active": opened]
+    }
+}
+
+enum AttendanceCourseCache {
+    static func plan(data: JSON, active: [JSON], force: Bool, now: Date) -> (cache: JSON, requests: [String]) {
+        let today = HongsiClock.text(now), ms = HongsiClock.milliseconds(now)
+        let timetableAt = data.object("updatedAt").number("timetable"), slots = data.objects("slots")
+        let sessions = AttendanceSnapshot.sessions(slots: slots, now: now)
+        let activeCodes = Set(active.compactMap { lecture -> String? in
+            if !lecture.text("code").isEmpty { return lecture.text("code") }
+            let matching = Set(slots.filter { AttendanceSnapshot.sameCourse($0, lecture) }.map { $0.text("code") }.filter { !$0.isEmpty })
+            return matching.count == 1 ? matching.first : nil
+        })
+        let codes = Set(sessions.map { $0.text("code") }.filter { !$0.isEmpty }).union(activeCodes).sorted()
+        let previous = data.object("attendance")
+        let saved = previous.text("date") == today ? previous.objects("sessions") : []
+        let hot = activeCodes.union(sessions.filter { session in
+            ms >= session.number("at") - 180_000 && ms < session.number("at") + 3_600_000 &&
+                !["present", "late", "excused"].contains(saved.first { AttendanceSnapshot.sameCourse($0, session) && $0.number("at") == session.number("at") }?.object("mark").text("kind") ?? "")
+        }.map { $0.text("code") })
+        let previousCache = data.object("attendanceCourses")
+        let stored = previousCache.text("date") == today && previousCache.number("timetableAt") == timetableAt ? previousCache.object("items") : [:]
+        var items: JSON = [:]
+        for code in codes {
+            let entry = stored.object(code)
+            if entry.number("checkedAt") > 0 && entry.number("checkedAt") <= ms && entry["data"] is JSON { items[code] = entry }
+        }
+        let requests = codes.filter { code in
+            let entry = items.object(code), age = ms - entry.number("checkedAt")
+            return force || hot.contains(code) || entry["data"] == nil || age < 0 || age >= 15 * 60_000
+        }.sorted { a, b in hot.contains(a) == hot.contains(b) ? a < b : hot.contains(a) }
+        return (["date": today, "timetableAt": timetableAt, "items": items], requests)
     }
 }
 

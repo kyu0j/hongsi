@@ -22,7 +22,7 @@ internal object WidgetAttendanceSnapshot {
             }
         }.sortedBy { it.optLong("at") }
     }
-    fun make(slots: List<JSONObject>, active: List<JSONObject>, courses: List<JSONObject>, receipts: List<JSONObject>, previous: JSONObject?, checkedAt: Long = System.currentTimeMillis()): JSONObject {
+    fun make(slots: List<JSONObject>, active: List<JSONObject>, courses: List<JSONObject>, receipts: List<JSONObject>, previous: JSONObject?, checkedAt: Long = System.currentTimeMillis(), courseCheckedAt: JSONObject = JSONObject()): JSONObject {
         val now = checkedAt
         val sessions = sessions(slots, now)
         fun ref(lecture: JSONObject, at: Long = now): JSONObject {
@@ -64,7 +64,9 @@ internal object WidgetAttendanceSnapshot {
                 val lecture = it.getJSONObject("lecture")
                 (item.text("key").isNotBlank() && lecture.text("key") == item.text("key")) || identity(ref(lecture, it.optLong("confirmedAt"))) == identity(item)
             }
-            if (!label.isNullOrBlank() && (receipt == null || checkedAt > receipt.optLong("confirmedAt"))) return JSONObject().put("kind", entry.text("kind")).put("label", label).put("source", "school")
+            val course = courses.singleOrNull { sameCourse(it, item) }
+            val schoolAt = courseCheckedAt.optLong(course?.text("code").orEmpty(), checkedAt)
+            if (!label.isNullOrBlank() && (receipt == null || schoolAt > receipt.optLong("confirmedAt"))) return JSONObject().put("kind", entry.text("kind")).put("label", label).put("source", "school")
             return receipt?.let { JSONObject().put("kind", it.text("kind")).put("label", labels[it.text("kind")]).put("source", "app") }
         }
         val opened = active.map { lecture ->
@@ -75,5 +77,41 @@ internal object WidgetAttendanceSnapshot {
         return JSONObject().put("date", dateText()).put("loaded", true).put("error", "").put("timetableLoaded", true).put("timetableError", "").put("checkedAt", now)
             .put("sessions", JSONArray(sessions.map { it.put("identity", identity(it)).put("mark", mark(it) ?: JSONObject.NULL).put("unrecorded", entry(it)?.text("kind") in listOf("planned", "none")).put("seenOpen", seen.contains(identity(it))) }))
             .put("active", JSONArray(opened))
+    }
+}
+
+internal object WidgetAttendanceCourses {
+    data class Plan(val cache: JSONObject, val requests: List<String>)
+    fun plan(data: JSONObject, active: List<JSONObject>, force: Boolean, now: Long): Plan {
+        val today = dateText(now / 1000)
+        val timetableAt = data.optJSONObject("updatedAt")?.optLong("timetable") ?: 0
+        val slots = data.array("slots")
+        val sessions = WidgetAttendanceSnapshot.sessions(slots, now)
+        val activeCodes = active.mapNotNull { lecture ->
+            lecture.text("code").takeIf(String::isNotBlank)
+                ?: slots.filter { sameCourse(it, lecture) }.map { it.text("code") }.distinct().singleOrNull()?.takeIf(String::isNotBlank)
+        }.toSet()
+        val codes = (sessions.map { it.text("code") } + activeCodes).filter(String::isNotBlank).distinct().sorted()
+        val previous = data.optJSONObject("attendance")
+        val saved = previous?.array("sessions").orEmpty().takeIf { previous?.text("date") == today }.orEmpty()
+        val hot = activeCodes + sessions.filter { session ->
+            now >= session.optLong("at") - 180_000 && now < session.optLong("at") + 3600_000 &&
+                saved.firstOrNull { sameCourse(it, session) && it.optLong("at") == session.optLong("at") }
+                    ?.optJSONObject("mark")?.text("kind") !in listOf("present", "late", "excused")
+        }.map { it.text("code") }
+        val previousCache = data.optJSONObject("attendanceCourses") ?: JSONObject()
+        val stored = previousCache.optJSONObject("items")?.takeIf {
+            previousCache.text("date") == today && previousCache.optLong("timetableAt") == timetableAt
+        }
+        val items = JSONObject()
+        codes.forEach { code -> stored?.optJSONObject(code)?.takeIf {
+            it.optLong("checkedAt") in 1..now && it.optJSONObject("data") != null
+        }?.let { items.put(code, JSONObject(it.toString())) } }
+        val requests = codes.filter { code ->
+            val entry = items.optJSONObject(code)
+            val age = now - (entry?.optLong("checkedAt") ?: 0)
+            force || code in hot || entry?.optJSONObject("data") == null || age !in 0 until 15 * 60_000L
+        }.sortedBy { if (it in hot) 0 else 1 }
+        return Plan(JSONObject().put("date", today).put("timetableAt", timetableAt).put("items", items), requests)
     }
 }
