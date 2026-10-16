@@ -1,4 +1,5 @@
 use std::future::Future;
+#[cfg(not(target_os = "android"))]
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -541,6 +542,7 @@ async fn submission_status(shell: State<'_, Arc<Shell>>, cmid: i64, job_id: Stri
     Ok(respond(&shell, reply))
 }
 
+#[cfg(not(target_os = "android"))]
 fn download_dir(app: &AppHandle) -> Result<PathBuf, String> {
     #[cfg(target_os = "ios")]
     let base = app.path().document_dir().map_err(|_| "다운로드 폴더를 찾지 못했어요.".to_string())?;
@@ -573,6 +575,7 @@ fn safe_name(name: &str) -> String {
     }
 }
 
+#[cfg(not(target_os = "android"))]
 fn unique_path(dir: &Path, name: &str) -> PathBuf {
     let first = dir.join(name);
     if !first.exists() {
@@ -635,11 +638,17 @@ async fn download(
     persist_auth(&shell).await;
     let (_, bytes) = result.map_err(|r| message(&r))?;
     let name = name.rsplit('/').next().unwrap_or(&name).to_string();
-    let path = unique_path(&download_dir(&app)?, &safe_name(&name));
-    std::fs::write(&path, &bytes).map_err(|_| "파일을 저장하지 못했어요.".to_string())?;
-    download_reference(&path)
+    #[cfg(target_os = "android")]
+    return android_external::save_download(&app, &safe_name(&name), &bytes).await;
+    #[cfg(not(target_os = "android"))]
+    {
+        let path = unique_path(&download_dir(&app)?, &safe_name(&name));
+        std::fs::write(&path, &bytes).map_err(|_| "파일을 저장하지 못했어요.".to_string())?;
+        download_reference(&path)
+    }
 }
 
+#[cfg(not(target_os = "android"))]
 fn download_reference(path: &Path) -> Result<String, String> {
     #[cfg(target_os = "ios")]
     return path.file_name().map(|name| name.to_string_lossy().into_owned())
@@ -648,6 +657,7 @@ fn download_reference(path: &Path) -> Result<String, String> {
     Ok(path.to_string_lossy().into_owned())
 }
 
+#[cfg(not(target_os = "android"))]
 fn download_file_path(dir: &Path, path: &str) -> Result<PathBuf, String> {
     let path = Path::new(path);
     #[cfg(target_os = "ios")]
@@ -674,6 +684,7 @@ fn download_file_path(dir: &Path, path: &str) -> Result<PathBuf, String> {
     Ok(file)
 }
 
+#[cfg(not(target_os = "android"))]
 fn download_check_error(error: std::io::Error) -> String {
     if error.kind() == std::io::ErrorKind::NotFound {
         "파일이 없어요.".into()
@@ -682,6 +693,7 @@ fn download_check_error(error: std::io::Error) -> String {
     }
 }
 
+#[cfg(not(target_os = "android"))]
 fn checked(app: &AppHandle, path: &str) -> Result<PathBuf, String> {
     let dir = download_dir(app)?
         .canonicalize()
@@ -690,20 +702,25 @@ fn checked(app: &AppHandle, path: &str) -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-fn check_downloads(app: AppHandle, paths: Vec<Option<String>>) -> Result<Vec<Option<String>>, String> {
+async fn check_downloads(app: AppHandle, paths: Vec<Option<String>>) -> Result<Vec<Option<String>>, String> {
     if paths.len() > 100 {
         return Err("파일을 확인하지 못했어요.".into());
     }
-    let dir = download_dir(&app)?.canonicalize()
-        .map_err(|_| "다운로드 폴더를 열지 못했어요.".to_string())?;
-    paths.into_iter().map(|path| {
-        let Some(path) = path else { return Ok(None) };
-        match download_file_path(&dir, &path) {
-            Ok(file) => download_reference(&file).map(Some),
-            Err(error) if error == "파일이 없어요." || error == "열 수 없는 경로예요." => Ok(None),
-            Err(error) => Err(error),
-        }
-    }).collect()
+    #[cfg(target_os = "android")]
+    return android_external::check_downloads(&app, paths).await;
+    #[cfg(not(target_os = "android"))]
+    {
+        let dir = download_dir(&app)?.canonicalize()
+            .map_err(|_| "다운로드 폴더를 열지 못했어요.".to_string())?;
+        paths.into_iter().map(|path| {
+            let Some(path) = path else { return Ok(None) };
+            match download_file_path(&dir, &path) {
+                Ok(file) => download_reference(&file).map(Some),
+                Err(error) if error == "파일이 없어요." || error == "열 수 없는 경로예요." => Ok(None),
+                Err(error) => Err(error),
+            }
+        }).collect()
+    }
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -728,9 +745,10 @@ fn open_with_os(target: &std::ffi::OsStr) -> Result<(), String> {
 
 #[tauri::command]
 async fn open_file(app: AppHandle, path: String) -> Result<(), String> {
-    let file = checked(&app, &path)?;
     #[cfg(target_os = "android")]
-    return android_external::open(&app, "openFile", &file.to_string_lossy()).await;
+    return android_external::open(&app, "openFile", &path).await;
+    #[cfg(not(target_os = "android"))]
+    let file = checked(&app, &path)?;
     #[cfg(target_os = "ios")]
     return tauri_plugin_hongsi_ios::call(&app, "openFile", &file.to_string_lossy()).await.map(|_| ());
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -739,9 +757,10 @@ async fn open_file(app: AppHandle, path: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn reveal_file(app: AppHandle, path: String) -> Result<(), String> {
-    let file = checked(&app, &path)?;
     #[cfg(target_os = "android")]
-    return android_external::open(&app, "revealFile", &file.to_string_lossy()).await;
+    return android_external::open(&app, "revealFile", &path).await;
+    #[cfg(not(target_os = "android"))]
+    let file = checked(&app, &path)?;
     #[cfg(target_os = "ios")]
     return tauri_plugin_hongsi_ios::call(&app, "revealFile", &file.to_string_lossy()).await.map(|_| ());
     #[cfg(not(any(target_os = "android", target_os = "ios")))]

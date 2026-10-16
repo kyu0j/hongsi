@@ -6,7 +6,6 @@ import android.database.MatrixCursor
 import android.os.CancellationSignal
 import android.os.Environment
 import android.os.ParcelFileDescriptor
-import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import android.provider.DocumentsContract.Root
 import android.provider.DocumentsProvider
@@ -31,7 +30,6 @@ internal object DownloadFiles {
     fun mime(file: File): String = MimeTypeMap.getSingleton()
         .getMimeTypeFromExtension(file.extension.lowercase()) ?: "application/octet-stream"
     fun authority(context: Context) = "${context.packageName}.downloads"
-    fun documentUri(context: Context) = DocumentsContract.buildDocumentUri(authority(context), ROOT_ID)
 }
 
 class DownloadDocuments : DocumentsProvider() {

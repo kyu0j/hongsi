@@ -6,11 +6,8 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
-import android.provider.DocumentsContract
 import android.provider.Settings
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import app.tauri.PermissionState
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -20,9 +17,18 @@ import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
+import org.json.JSONArray
+import java.io.FileNotFoundException
+import kotlin.concurrent.thread
 
 @InvokeArg
 class ExternalArgs { lateinit var value: String }
+
+@InvokeArg
+class SaveDownloadArgs { lateinit var path: String; lateinit var name: String }
+
+@InvokeArg
+class CheckDownloadsArgs { var paths: Array<String?> = emptyArray() }
 
 internal object ExternalIntents {
     fun url(value: String): Intent {
@@ -30,23 +36,12 @@ internal object ExternalIntents {
         require(uri.scheme in listOf("https", "http") && !uri.host.isNullOrBlank() && value.length < 16384)
         return Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)
     }
-    fun file(activity: android.content.Context, value: String): Intent {
-        val file = DownloadFiles.checked(activity, value)
-        val uri = FileProvider.getUriForFile(activity, "${activity.packageName}.fileprovider", file)
-        return Intent(Intent.ACTION_VIEW).setDataAndType(uri, DownloadFiles.mime(file))
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    fun folder(activity: android.content.Context): Intent =
-        Intent(Intent.ACTION_VIEW).setDataAndType(DownloadFiles.documentUri(activity), DocumentsContract.Document.MIME_TYPE_DIR)
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    fun folderPicker(activity: android.content.Context): Intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-        addCategory(Intent.CATEGORY_OPENABLE)
-        type = "*/*"
-        if (Build.VERSION.SDK_INT >= 26) putExtra(DocumentsContract.EXTRA_INITIAL_URI, DownloadFiles.documentUri(activity))
-    }
 }
 
-@TauriPlugin(permissions = [Permission(strings = [Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION], alias = "location")])
+@TauriPlugin(permissions = [
+    Permission(strings = [Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION], alias = "location"),
+    Permission(strings = [Manifest.permission.WRITE_EXTERNAL_STORAGE], alias = "downloads")
+])
 class ExternalPlugin(private val host: Activity) : Plugin(host) {
     private fun locationPermissionState(): String {
         if (ContextCompat.checkSelfPermission(host, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
@@ -107,16 +102,41 @@ class ExternalPlugin(private val host: Activity) : Plugin(host) {
         val value = invoke.parseArgs(ExternalArgs::class.java).value
         launch(invoke, "링크를 열 브라우저가 없어요.") { host.startActivity(ExternalIntents.url(value)) }
     }
+    @Command fun saveDownload(invoke: Invoke) {
+        if (!PublicDownloads.canWrite(host)) {
+            host.runOnUiThread { requestPermissionForAlias("downloads", invoke, "downloadPermissionResult") }
+        } else saveDownloadFile(invoke)
+    }
+    @PermissionCallback
+    private fun downloadPermissionResult(invoke: Invoke) {
+        if (PublicDownloads.canWrite(host)) saveDownloadFile(invoke)
+        else invoke.reject("파일 저장 권한을 허용해 주세요.")
+    }
+    private fun saveDownloadFile(invoke: Invoke) {
+        val args = invoke.parseArgs(SaveDownloadArgs::class.java)
+        thread(name = "hongsi-download-save") {
+            try { invoke.resolve(JSObject().put("path", PublicDownloads.save(host, args.path, args.name))) }
+            catch (_: Exception) { invoke.reject("파일을 저장하지 못했어요.") }
+        }
+    }
+    @Command fun checkDownloads(invoke: Invoke) {
+        val paths = invoke.parseArgs(CheckDownloadsArgs::class.java).paths
+        if (paths.size > 100) { invoke.reject("파일을 확인하지 못했어요."); return }
+        thread(name = "hongsi-download-check") {
+            try {
+                val checked = paths.map { path ->
+                    if (path == null) null else try { PublicDownloads.check(host, path) } catch (_: FileNotFoundException) { null }
+                }
+                invoke.resolve(JSObject().put("paths", JSONArray(checked)))
+            } catch (_: Exception) { invoke.reject("파일을 확인하지 못했어요.") }
+        }
+    }
     @Command fun openFile(invoke: Invoke) {
         val value = invoke.parseArgs(ExternalArgs::class.java).value
-        launch(invoke, "이 파일 형식을 열 수 있는 앱이 없어요.") { host.startActivity(ExternalIntents.file(host, value)) }
+        launch(invoke, "이 파일 형식을 열 수 있는 앱이 없어요.") { host.startActivity(PublicDownloads.open(host, value)) }
     }
     @Command fun revealFile(invoke: Invoke) {
         val value = invoke.parseArgs(ExternalArgs::class.java).value
-        launch(invoke, "파일 앱을 열지 못했어요.") {
-            DownloadFiles.checked(host, value)
-            try { host.startActivity(ExternalIntents.folder(host)) }
-            catch (_: ActivityNotFoundException) { host.startActivity(ExternalIntents.folderPicker(host)) }
-        }
+        launch(invoke, "파일 앱을 열지 못했어요.") { PublicDownloads.reveal(host, value) }
     }
 }
