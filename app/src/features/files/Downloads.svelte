@@ -5,6 +5,7 @@
   import { isCurrentSession, sessionVersion } from '../../shared/state/session';
   import { toastOnce } from '../../shared/state/ui.svelte';
   import { ago } from '../../shared/utils/format';
+  import { pressFeedback } from '../../shared/utils/press-feedback';
   import EmptyState from '../../shared/ui/EmptyState.svelte';
   import Icon from '../../shared/ui/Icon.svelte';
   import Sheet from '../../shared/ui/Sheet.svelte';
@@ -35,7 +36,7 @@
   });
 </script>
 
-<button class="icon-btn" onclick={show} aria-label="받은 파일" title="받은 파일"><Icon name="inbox" size={23} /></button>
+<button class="icon-btn press-feedback" use:pressFeedback onclick={show} aria-label="받은 파일" title="받은 파일"><Icon name="inbox" size={23} /></button>
 <Sheet bind:open title="받은 파일">
   {#if downloads.list.length}
     <ul class="files">

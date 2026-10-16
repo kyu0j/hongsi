@@ -365,7 +365,8 @@ a.btn {
   transition: background 0.15s;
 }
 
-.icon-btn:hover {
+.icon-btn:not(.press-feedback):hover,
+.press-feedback[data-pressed] {
   background: var(--surface-3);
 }
 
