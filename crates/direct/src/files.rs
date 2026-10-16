@@ -1,6 +1,4 @@
-use std::time::Instant;
-
-use crate::{Direct, Reply, AUTOLOGIN_GAP, CN2, MB};
+use crate::{Direct, Reply, MB};
 
 impl Direct {
     pub async fn attachment(&self, cmid: i64, index: usize) -> Result<(String, Vec<u8>), Reply> {
@@ -49,30 +47,4 @@ impl Direct {
             .filter(|(mime, _)| mime.starts_with("image/"))
     }
 
-    pub async fn browser_url(&self, url: &str) -> String {
-        if !url.starts_with(&format!("{CN2}/")) {
-            return url.to_string();
-        }
-        let Ok(s) = self.current().await else { return url.to_string() };
-        if s.autologin_at
-            .lock()
-            .ok()
-            .and_then(|t| *t)
-            .is_some_and(|t| t.elapsed() < AUTOLOGIN_GAP)
-        {
-            return url.to_string();
-        }
-        match s.session.autologin_url(url).await {
-            Ok(link) => {
-                if let Ok(mut t) = s.autologin_at.lock() {
-                    *t = Some(Instant::now());
-                }
-                link
-            }
-            Err(e) => {
-                tracing::warn!("클래스룸 자동 로그인 주소를 받지 못함: {e}");
-                url.to_string()
-            }
-        }
-    }
 }

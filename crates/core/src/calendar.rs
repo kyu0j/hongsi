@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
-use crate::classroom::CN2;
 use crate::models::{AcademicTerm, Assignment, Attachment, Course, SemesterDisplay, SubmissionState, SubmitConfig, Vod, VodState};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,7 +76,6 @@ pub struct CalendarItem {
     pub done_override: Option<bool>,
     pub alert: bool,
     pub alert_leads: Option<Vec<i32>>,
-    pub url: String,
     pub intro_html: Option<String>,
     pub attachments: Vec<Attachment>,
     pub watch: Option<WatchInfo>,
@@ -141,7 +139,6 @@ pub fn build(
             start: a.opens,
             due: a.due,
             status,
-            url: format!("{CN2}/mod/assign/view.php?id={}", a.cmid),
             intro_html: Some(a.intro_html.clone()).filter(|h| !h.trim().is_empty()),
             attachments: a.attachments.clone(),
             watch: None,
@@ -180,10 +177,6 @@ pub fn build(
             start: Some(v.start),
             due: Some(v.end),
             status,
-            url: match v.cmid {
-                Some(cmid) => format!("{CN2}/mod/vod/view.php?id={cmid}"),
-                None => format!("{CN2}/course/view.php?id={}", v.course_id),
-            },
             intro_html: None,
             attachments: vec![],
             watch: Some(WatchInfo { required: v.required.clone(), watched: v.watched.clone(), mark: v.mark.clone() }),

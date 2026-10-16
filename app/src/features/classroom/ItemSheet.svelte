@@ -94,10 +94,6 @@
       {/key}
     {/if}
 
-    {#if canSubmit}
-      <a class="cn2-link" href={item.url} target="_blank" rel="noopener noreferrer">클래스룸에서 열기 <Icon name="external" size={14} /></a>
-    {/if}
-
     {#if onaddtodo}
       <div class="subtodos">
         <div class="sub-head">
@@ -140,10 +136,6 @@
         <button class="btn btn-primary w1" onclick={() => (submitOpen = true)}>
           <Icon name="check" size={18} />{submitted ? '제출 파일 수정' : '제출하기'}
         </button>
-      {:else}
-        <a class="btn btn-primary w1" href={item.url} target="_blank" rel="noopener noreferrer">
-          클래스룸에서 열기 <Icon name="external" size={17} />
-        </a>
       {/if}
     {/if}
   {/snippet}
@@ -220,17 +212,6 @@
   }
 
   .alert-settings { margin-bottom: 16px; }
-
-  .cn2-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    margin: -4px 0 14px;
-    font-size: 13px;
-    font-weight: 650;
-    color: var(--primary-text);
-    text-decoration: none;
-  }
 
   .subtodos {
     display: grid;

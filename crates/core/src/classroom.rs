@@ -33,17 +33,15 @@ impl SchoolSession {
                 match self.autologin_for(auth, &format!("{CN2}/")).await {
                     Ok(url) => {
                         let body = self.client.get(url).send().await?.text().await?;
-                        if body.contains("\"sesskey\"") { return Ok(()); }
+                        if body.contains("\"sesskey\"") && !body.contains("loginform") { return Ok(()); }
                     }
                     Err(error @ (CoreError::Network(_) | CoreError::ClassroomTokenExpired)) => return Err(error),
                     Err(_) => {}
                 }
             }
             let body = self.client.get(format!("{CN2}/login/index.php")).send().await?.text().await?;
-            if !body.contains("\"sesskey\"") {
-                return Err(CoreError::SessionExpired);
-            }
-            Ok::<(), CoreError>(())
+            if body.contains("\"sesskey\"") && !body.contains("loginform") { return Ok(()); }
+            Err(CoreError::SessionExpired)
         }).await?;
         Ok(())
     }
@@ -143,13 +141,6 @@ impl SchoolSession {
         Ok(session)
     }
 
-    pub async fn autologin_url(&self, target: &str) -> Result<String> {
-        if !target.starts_with(&format!("{CN2}/")) {
-            return Err(CoreError::NotFound("클래스룸 주소가 아니에요.".into()));
-        }
-        self.autologin_for(self.moodle().await?, target).await
-    }
-
     pub async fn restore_classroom_web(&self) -> Result<()> {
         self.ensure_moodle_web().await
     }
@@ -158,7 +149,7 @@ impl SchoolSession {
         let private = auth
             .private_token
             .as_deref()
-            .ok_or_else(|| CoreError::Upstream("이 계정은 자동 로그인을 쓸 수 없어요.".into()))?;
+            .ok_or(CoreError::ClassroomTokenExpired)?;
         let v = ws_call(&self.client, &auth.token, "tool_mobile_get_autologin_key", &[("privatetoken".into(), private.into())]).await?;
         let key = v["key"].as_str().ok_or_else(|| CoreError::Parse("자동 로그인 키".into()))?;
         let base = v["autologinurl"].as_str().unwrap_or("").to_string();

@@ -100,14 +100,6 @@
       {/if}
     {/if}
   {/if}
-
-  {#snippet footer()}
-    {#if notice}
-      <a class="btn btn-ghost btn-block" href={notice.url} target="_blank" rel="noopener noreferrer">
-        클래스룸에서 열기 <Icon name="external" size={17} />
-      </a>
-    {/if}
-  {/snippet}
 </Sheet>
 
 <style>
