@@ -1,6 +1,6 @@
 <script lang="ts">
   import { MediaQuery } from 'svelte/reactivity';
-  import { agendaEntries } from './agenda';
+  import { calendarEntries } from './agenda';
   import { isFinished } from './colors';
   import { dayKey, dueKey, monthCells, todayKey } from '../../shared/utils/format';
   import { clock } from '../../shared/state/clock.svelte';
@@ -18,6 +18,7 @@
     items,
     colors,
     names,
+    codes,
     todos = [],
     week = false,
     collapse = 0,
@@ -29,13 +30,13 @@
     items: CalendarItem[];
     colors: Map<number, string>;
     names: Map<number, string>;
+    codes: Map<number, string>;
     todos?: Todo[];
     week?: boolean;
     collapse?: number;
     onpick?: (key: string, el: HTMLElement) => void;
   } = $props();
 
-  const maxShow = 3;
   const narrow = new MediaQuery('max-width: 767px');
   const small = new MediaQuery('max-width: 374px');
   let monthPickerOpen = $state(false);
@@ -209,7 +210,8 @@
     {#each page.cells as cell, i (cell.key)}
       {@const list = byDay.get(cell.key) ?? []}
       {@const tlist = todosByDay.get(cell.key) ?? []}
-      {@const entries = agendaEntries(list, tlist)}
+      {@const entries = calendarEntries(list, tlist, codes)}
+      {@const maxShow = entries.length <= 4 ? 4 : 3}
       <button
         class="day"
         class:out={!cell.inMonth}
@@ -228,13 +230,12 @@
               class="ev"
               class:finished={entry.done}
               class:todo={entry.kind === 'todo'}
-              class:vod={entry.kind === 'item' && entry.value.kind === 'vod'}
               style:--c={entry.kind === 'todo' ? (entry.value.courseId === null ? 'var(--todo-neutral)' : (colors.get(entry.value.courseId) ?? 'var(--todo-neutral)')) : (colors.get(entry.value.courseId) ?? 'var(--text-3)')}
             >
               <span class="t">{entry.kind === 'todo' ? entry.value.title : short(entry.value)}</span>
             </span>
           {/each}
-          {#if list.length + tlist.length > maxShow}<span class="more">+{list.length + tlist.length - maxShow}</span>{/if}
+          {#if entries.length > maxShow}<span class="more">+{entries.length - maxShow}</span>{/if}
         </span>
       </button>
     {/each}
@@ -373,20 +374,16 @@
     width: 6px;
     height: 6px;
     border-radius: 999px;
-    background: var(--c);
-  }
-
-  .ev.vod {
     background: transparent;
-    box-shadow: inset 0 0 0 1.6px var(--c);
+    box-shadow: inset 0 0 0 1.5px var(--marker, var(--c));
   }
 
   .ev.todo {
-    border-radius: 2px;
+    --marker: var(--todo-neutral);
   }
 
   .ev.finished {
-    color: var(--text-3);
+    background: var(--marker, var(--c));
   }
 
   .ev .t {
@@ -453,9 +450,7 @@
       gap: 3px;
     }
 
-    .cal:not(.week) .ev,
-    .cal:not(.week) .ev.vod,
-    .cal:not(.week) .ev.todo {
+    .cal:not(.week) .ev {
       width: 100%;
       height: auto;
       border-radius: 6px;
