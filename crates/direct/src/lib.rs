@@ -20,8 +20,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::{Mutex, RwLock};
 
-use hongsi_config::CLASSROOM_URL as CN2;
-const AUTOLOGIN_GAP: Duration = Duration::from_secs(6 * 60);
 const MB: u64 = 1024 * 1024;
 
 #[derive(Debug)]
@@ -91,7 +89,6 @@ struct School {
     calendar: Mutex<hongsi_core::calendar_cache::CalendarResults>,
     lectures: Mutex<Option<(Instant, ActiveLectures)>>,
     courses: Mutex<HashMap<String, (Instant, AttendanceCourse)>>,
-    autologin_at: std::sync::Mutex<Option<Instant>>,
 }
 
 impl School {
@@ -102,7 +99,6 @@ impl School {
             calendar: Mutex::new(Default::default()),
             lectures: Mutex::new(None),
             courses: Mutex::new(HashMap::new()),
-            autologin_at: std::sync::Mutex::new(None),
         }
     }
 }

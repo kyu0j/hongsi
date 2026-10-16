@@ -212,11 +212,11 @@
   });
 
   $effect(() => {
-    if (!isApp) return;
     const onClick = (e: MouseEvent) => {
       if (e.defaultPrevented) return;
       const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
       if (!a || a.target !== '_blank' || !/^https?:/.test(a.href)) return;
+      if (!isApp) return;
       e.preventDefault();
       native.openUrl(a.href).catch(() => toast('브라우저를 열지 못했어요.', 'error'));
     };

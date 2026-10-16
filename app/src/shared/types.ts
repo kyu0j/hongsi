@@ -74,7 +74,6 @@ export type CalendarItem = {
   doneOverride: boolean | null;
   alert: boolean;
   alertLeads: number[] | null;
-  url: string;
   introHtml: string | null;
   attachments: Attachment[];
   watch: { required: string | null; watched: string | null; mark: string | null } | null;

@@ -65,7 +65,8 @@ impl Direct {
         self.set_server_auth(Some(server));
         self.revoked.store(false, Ordering::SeqCst);
         self.remember.store(true, Ordering::SeqCst);
-        *self.school.write().await = Some(Arc::new(School::new(session, snapshot.student_id)));
+        let school = School::new(session, snapshot.student_id);
+        *self.school.write().await = Some(Arc::new(school));
         self.generation.fetch_add(1, Ordering::SeqCst);
         true
     }
@@ -89,12 +90,7 @@ impl Direct {
             if self.session_revoked() {
                 return Self::revoked_reply();
             }
-            let same_account = self
-                .school
-                .read()
-                .await
-                .as_ref()
-                .is_some_and(|current| current.student_id == school.student_id);
+            let same_account = self.school.read().await.as_ref().is_some_and(|current| current.student_id == school.student_id);
             if !same_account || self.remember.load(Ordering::SeqCst) != remember {
                 let reply = self.revoke_server_login().await;
                 if reply.status != 200 {
@@ -143,7 +139,8 @@ impl Direct {
         if !current.as_ref().is_some_and(|value| Arc::ptr_eq(value, &school)) {
             return Reply::error(409, "account_changed", "로그인 상태가 변경됐어요.");
         }
-        *current = Some(Arc::new(School::new(session, school.student_id.clone())));
+        let replacement = School::new(session, school.student_id.clone());
+        *current = Some(Arc::new(replacement));
         self.generation.fetch_add(1, Ordering::SeqCst);
         Reply::ok(json!({ "ok": true }))
     }

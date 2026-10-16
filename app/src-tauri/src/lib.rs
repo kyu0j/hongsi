@@ -756,27 +756,21 @@ async fn reveal_file(app: AppHandle, path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn open_url(app: AppHandle, shell: State<'_, Arc<Shell>>, url: String) -> Result<(), String> {
-    let _operations = shell.operations.read().await;
+async fn open_url(app: AppHandle, url: String) -> Result<(), String> {
     let allowed = (url.starts_with("https://") || url.starts_with("http://"))
         && url.len() < 4096
         && !url.chars().any(|c| c.is_whitespace() || c.is_control());
     if !allowed {
         return Err("열 수 없는 주소예요.".into());
     }
-    if url.starts_with(&format!("{}/", hongsi_config::CLASSROOM_URL)) {
-        ensure_login(&shell).await.map_err(|r| message(&r))?;
-    }
-    let target = shell.direct.browser_url(&url).await;
-    persist_auth(&shell).await;
     #[cfg(target_os = "android")]
-    return android_external::open(&app, "openUrl", &target).await;
+    return android_external::open(&app, "openUrl", &url).await;
     #[cfg(target_os = "ios")]
-    return tauri_plugin_hongsi_ios::call(&app, "openUrl", &target).await.map(|_| ());
+    return tauri_plugin_hongsi_ios::call(&app, "openUrl", &url).await.map(|_| ());
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let _ = app;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    open_with_os(std::ffi::OsStr::new(&target))
+    open_with_os(std::ffi::OsStr::new(&url))
 }
 
 #[tauri::command]
