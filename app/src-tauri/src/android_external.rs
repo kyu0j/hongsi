@@ -1,6 +1,51 @@
 use tauri::{plugin::{Builder, TauriPlugin}, AppHandle, Manager, Wry};
+use serde::Deserialize;
+use std::io::Write;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 struct External(tauri::plugin::PluginHandle<Wry>);
+
+struct StagedDownload(PathBuf);
+impl Drop for StagedDownload {
+    fn drop(&mut self) { let _ = std::fs::remove_file(&self.0); }
+}
+
+#[derive(Deserialize)]
+struct SavedDownload { path: String }
+
+#[derive(Deserialize)]
+struct CheckedDownloads { paths: Vec<Option<String>> }
+
+pub async fn save_download(app: &AppHandle, name: &str, bytes: &[u8]) -> Result<String, String> {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let failed = || "파일을 저장하지 못했어요.".to_string();
+    let dir = app.path().app_cache_dir().map_err(|_| failed())?.join("download-staging");
+    std::fs::create_dir_all(&dir).map_err(|_| failed())?;
+    let time = SystemTime::now().duration_since(UNIX_EPOCH).map_err(|_| failed())?.as_nanos();
+    let path = dir.join(format!("{time}-{}", NEXT.fetch_add(1, Ordering::Relaxed)));
+    let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(&path).map_err(|_| failed())?;
+    let staged = StagedDownload(path);
+    file.write_all(bytes).map_err(|_| failed())?;
+    drop(file);
+    let result: SavedDownload = app.state::<External>().0.run_mobile_plugin_async("saveDownload",
+        serde_json::json!({"path": staged.0.to_string_lossy(), "name": name})).await.map_err(|error| {
+            if let tauri::plugin::mobile::PluginInvokeError::InvokeRejected(response) = error {
+                if response.message.as_deref() == Some("파일 저장 권한을 허용해 주세요.") {
+                    return "파일 저장 권한을 허용해 주세요.".to_string();
+                }
+            }
+            failed()
+        })?;
+    Ok(result.path)
+}
+
+pub async fn check_downloads(app: &AppHandle, paths: Vec<Option<String>>) -> Result<Vec<Option<String>>, String> {
+    let result: CheckedDownloads = app.state::<External>().0.run_mobile_plugin_async("checkDownloads",
+        serde_json::json!({"paths": paths})).await.map_err(|_| "파일을 확인하지 못했어요.".to_string())?;
+    Ok(result.paths)
+}
 
 pub fn init() -> TauriPlugin<Wry> {
     Builder::new("external")
