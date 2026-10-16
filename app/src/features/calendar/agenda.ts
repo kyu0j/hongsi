@@ -45,3 +45,17 @@ export function compareAgendaEntries(a: AgendaEntry, b: AgendaEntry): number {
 export function agendaEntries(items: CalendarItem[], todos: Todo[]): AgendaEntry[] {
   return [...items.map(agendaItem), ...todos.map(agendaTodo)].sort(compareAgendaEntries);
 }
+
+export function calendarEntries(items: CalendarItem[], todos: Todo[], codes: Map<number, string>): AgendaEntry[] {
+  return agendaEntries(items, todos).sort((a, b) => {
+    if (a.done !== b.done) return Number(a.done) - Number(b.done);
+    if (a.kind !== b.kind) return a.kind === 'todo' ? -1 : 1;
+    if (a.kind === 'item' && b.kind === 'item') {
+      const aCode = codes.get(a.value.courseId) ?? '';
+      const bCode = codes.get(b.value.courseId) ?? '';
+      if (!aCode || !bCode) return Number(!aCode) - Number(!bCode);
+      return aCode < bCode ? -1 : aCode > bCode ? 1 : 0;
+    }
+    return 0;
+  });
+}

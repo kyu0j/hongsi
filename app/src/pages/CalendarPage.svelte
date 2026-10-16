@@ -6,7 +6,7 @@
   import type { CalendarStat } from '../features/calendar/summary';
   import { MediaQuery } from 'svelte/reactivity';
   import { isApp } from '../shared/api/api';
-  import { agendaEntries, type AgendaEntry } from '../features/calendar/agenda';
+  import { agendaEntries, calendarEntries, type AgendaEntry } from '../features/calendar/agenda';
   import { clock } from '../shared/state/clock.svelte';
   import { toggleDone } from '../features/calendar/actions.svelte';
   import { courseColors, isOverdue, isPending } from '../features/calendar/colors';
@@ -110,6 +110,7 @@
   const items = $derived((data?.items ?? []).filter((i) => !hidden.has(i.courseId)
     && (settings.showUndatedAssignments || i.kind !== 'assignment' || i.due !== null)));
   const colors = $derived(courseColors(data?.courses ?? []));
+  const codes = $derived(new Map((data?.courses ?? []).map((c) => [c.id, c.code ?? ''])));
   const courseName = (id: number) => data?.courses.find((c) => c.id === id)?.name ?? '';
 
   const visible = $derived(
@@ -133,6 +134,7 @@
   );
   const dayTodos = $derived(myTodos.filter((t) => todoKey(t) === selected));
   const dayEntries = $derived(agendaEntries(dayItems, dayTodos));
+  const dayMarkers = $derived(calendarEntries(dayItems, dayTodos, codes));
   const remainingTodos = $derived(courseTodos.filter((t) => t.doneAt === null));
   const weekTodos = $derived.by(() => {
     const now = Date.now() / 1000;
@@ -305,6 +307,7 @@
               items={visible}
               {colors}
               {names}
+              {codes}
               todos={myTodos}
               onpick={onPick}
             />
@@ -319,6 +322,7 @@
                 items={visible}
                 {colors}
                 {names}
+                {codes}
                 todos={myTodos}
                 onpick={dock.afterStripPick}
               />
@@ -385,7 +389,7 @@
         </header>
         {#if dayEntries.length}
           <ul>
-            {#each dayEntries as entry (entry.key)}
+            {#each dayMarkers as entry (entry.key)}
               <li>
                 <button
                   class="pop-row"
@@ -393,7 +397,7 @@
                   style:--c={entry.kind === 'todo' ? todoColor(entry.value) : (colors.get(entry.value.courseId) ?? 'var(--text-3)')}
                   onclick={() => openFromPop(entry)}
                 >
-                  <i class="shape" class:todo={entry.kind === 'todo'} class:vod={entry.kind === 'item' && entry.value.kind === 'vod'} aria-hidden="true"></i>
+                  <i class="shape" class:todo={entry.kind === 'todo'} aria-hidden="true"></i>
                   <span class="pt">{entry.value.title}</span>
                   {#if entry.kind === 'todo'}
                     <span class="ptime">{entry.value.allDay || entry.value.due === null ? '하루 종일' : dueTime(entry.value.due)}</span>
@@ -679,15 +683,13 @@
     width: 9px;
     height: 9px;
     border-radius: 999px;
-    background: var(--c);
-  }
-  .shape.vod {
     background: transparent;
-    box-shadow: inset 0 0 0 2px var(--c);
+    box-shadow: inset 0 0 0 1.5px var(--marker, var(--c));
   }
   .shape.todo {
-    border-radius: 2px;
+    --marker: var(--todo-neutral);
   }
+  .pop-row.finished .shape { background: var(--marker, var(--c)); }
   .pt {
     flex: 1;
     min-width: 0;
