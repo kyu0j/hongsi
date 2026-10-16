@@ -5,6 +5,7 @@
   import { calendar } from './calendar-resources.svelte';
   import { pendingTodos, removeTodo, saveTodo, fromUnix, toUnix } from './todos.svelte';
   import TimeWheel from '../../shared/ui/TimeWheel.svelte';
+  import TodoTimeField from './TodoTimeField.svelte';
   import DateField from '../../shared/ui/DateField.svelte';
   import type { AcademicTerm, Course, Todo } from '../../shared/types';
   import Icon from '../../shared/ui/Icon.svelte';
@@ -231,14 +232,11 @@
       {/if}
     {:else}
       <div class="row">
-        <div class="field">
-          <span>날짜</span>
+        <div class="field date-field">
+          <span class="field-label">날짜</span>
           <DateField bind:value={date} required />
         </div>
-        <label class="field">
-          <span>시간</span>
-          <input type="time" bind:value={time} disabled={!date} />
-        </label>
+        <TodoTimeField bind:value={time} disabled={!date} />
       </div>
     {/if}
 
@@ -322,32 +320,31 @@
 
   .row {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 16px 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
   }
 
-  @media (min-width: 480px) {
-    .row {
-      grid-template-columns: 1.4fr 1fr;
-    }
+  .date-field { min-width: 0; }
+  .field-label { display: flex; align-items: center; min-height: 20px; }
+  .date-field :global(svg) { width: 24px; height: 24px; }
+
+  @media (max-width: 559px) {
+    .row { gap: 8px; }
+    .date-field :global(.shown) { gap: 4px; font-size: clamp(12px, 3.3333vw, 14px); }
+    .date-field :global(.main), .date-field :global(.wd) { font-size: inherit; }
+    .date-field :global(.required .shown) { padding: 0 6px; }
+    .date-field :global(svg) { width: 20px; height: 20px; }
   }
 
-  input[type='time'],
   textarea {
-    height: 46px;
-    padding: 0 12px;
+    padding: 10px 12px;
     border-radius: 12px;
     border: 1px solid var(--border-strong);
     background: var(--surface-2);
     font-size: 15px;
-    font-weight: 550;
-  }
-
-  textarea {
-    height: auto;
-    padding: 10px 12px;
-    resize: vertical;
     font-weight: 500;
+    resize: vertical;
   }
 
   input:focus,
