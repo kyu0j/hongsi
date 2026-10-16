@@ -23,6 +23,7 @@ import java.io.IOException
 
 internal object PublicDownloads {
     private const val RELATIVE_PATH = "Download/홍시/"
+    data class SavedDownload(val path: String, val name: String)
 
     fun canWrite(context: Context): Boolean = Build.VERSION.SDK_INT >= 29 ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
@@ -30,7 +31,7 @@ internal object PublicDownloads {
     @Suppress("DEPRECATION")
     private fun directory() = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "홍시").canonicalFile
 
-    fun save(context: Context, path: String, name: String): String {
+    fun save(context: Context, path: String, name: String): SavedDownload {
         val source = File(path).canonicalFile
         require(source.parentFile == File(context.cacheDir, "download-staging").canonicalFile && source.isFile)
         require(name.isNotBlank() && name != "." && name != ".." && '/' !in name && '\\' !in name)
@@ -39,7 +40,7 @@ internal object PublicDownloads {
     }
 
     @RequiresApi(29)
-    private fun saveMedia(context: Context, source: File, name: String): String {
+    private fun saveMedia(context: Context, source: File, name: String): SavedDownload {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
@@ -54,14 +55,14 @@ internal object PublicDownloads {
             output.use { target -> source.inputStream().use { it.copyTo(target) } }
             val published = ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }
             if (resolver.update(uri, published, null, null) != 1) throw IOException()
-            return uri.toString()
+            return checkedMedia(context, uri.toString())
         } catch (error: Exception) {
             runCatching { resolver.delete(uri, null, null) }
             throw error
         }
     }
 
-    private fun saveLegacy(context: Context, source: File, name: String): String {
+    private fun saveLegacy(context: Context, source: File, name: String): SavedDownload {
         val dir = directory()
         if (!dir.isDirectory && !dir.mkdirs()) throw IOException()
         val dot = name.lastIndexOf('.').takeIf { it > 0 } ?: name.length
@@ -78,7 +79,7 @@ internal object PublicDownloads {
             throw error
         }
         MediaScannerConnection.scanFile(context, arrayOf(file.path), arrayOf(DownloadFiles.mime(file)), null)
-        return file.path
+        return SavedDownload(file.path, file.name)
     }
 
     private fun checkedFile(context: Context, value: String): File {
@@ -92,32 +93,33 @@ internal object PublicDownloads {
     }
 
     @RequiresApi(29)
-    private fun checkedMedia(context: Context, value: String): Uri {
+    private fun checkedMedia(context: Context, value: String): SavedDownload {
         val uri = value.toUri()
         val parts = uri.pathSegments
         if (uri.scheme != "content" || uri.authority != MediaStore.AUTHORITY || uri.query != null || uri.fragment != null ||
             parts.size != 3 || parts[0] !in setOf(MediaStore.VOLUME_EXTERNAL_PRIMARY, MediaStore.VOLUME_EXTERNAL) ||
             parts[1] != "downloads" || parts[2].toLongOrNull()?.let { it > 0 } != true) throw FileNotFoundException()
-        val columns = arrayOf(MediaStore.MediaColumns.RELATIVE_PATH, MediaStore.MediaColumns.OWNER_PACKAGE_NAME)
-        context.contentResolver.query(uri, columns, null, null, null).use { cursor ->
+        val columns = arrayOf(MediaStore.MediaColumns.RELATIVE_PATH, MediaStore.MediaColumns.OWNER_PACKAGE_NAME, MediaStore.MediaColumns.DISPLAY_NAME)
+        val name = context.contentResolver.query(uri, columns, null, null, null).use { cursor ->
             if (cursor == null || !cursor.moveToFirst() || cursor.getString(0) != RELATIVE_PATH ||
                 cursor.getString(1) != context.packageName) throw FileNotFoundException()
+            cursor.getString(2)?.takeIf { it.isNotBlank() } ?: throw IOException()
         }
         val descriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: throw FileNotFoundException()
         descriptor.close()
-        return uri
+        return SavedDownload(uri.toString(), name)
     }
 
-    fun check(context: Context, value: String): String {
-        return if (value.startsWith("content:") && Build.VERSION.SDK_INT >= 29) checkedMedia(context, value).toString()
-            else checkedFile(context, value).path
+    fun check(context: Context, value: String): SavedDownload {
+        return if (value.startsWith("content:") && Build.VERSION.SDK_INT >= 29) checkedMedia(context, value)
+            else checkedFile(context, value).let { SavedDownload(it.path, it.name) }
     }
 
     fun open(context: Context, value: String): Intent {
         val uri: Uri
         val mime: String
         if (value.startsWith("content:") && Build.VERSION.SDK_INT >= 29) {
-            uri = checkedMedia(context, value)
+            uri = checkedMedia(context, value).path.toUri()
             mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
         } else {
             val file = checkedFile(context, value)
@@ -129,7 +131,7 @@ internal object PublicDownloads {
     }
 
     fun reveal(context: Context, value: String) {
-        val reference = check(context, value)
+        val reference = check(context, value).path
         val legacy = !reference.startsWith("content:") && File(reference).parentFile == DownloadFiles.directory(context)
         if (!legacy) {
             val samsung = Intent("samsung.myfiles.intent.action.LAUNCH_MY_FILES")

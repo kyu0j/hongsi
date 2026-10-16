@@ -115,7 +115,10 @@ class ExternalPlugin(private val host: Activity) : Plugin(host) {
     private fun saveDownloadFile(invoke: Invoke) {
         val args = invoke.parseArgs(SaveDownloadArgs::class.java)
         thread(name = "hongsi-download-save") {
-            try { invoke.resolve(JSObject().put("path", PublicDownloads.save(host, args.path, args.name))) }
+            try {
+                val file = PublicDownloads.save(host, args.path, args.name)
+                invoke.resolve(JSObject().put("path", file.path).put("name", file.name))
+            }
             catch (_: Exception) { invoke.reject("파일을 저장하지 못했어요.") }
         }
     }
@@ -125,9 +128,12 @@ class ExternalPlugin(private val host: Activity) : Plugin(host) {
         thread(name = "hongsi-download-check") {
             try {
                 val checked = paths.map { path ->
-                    if (path == null) null else try { PublicDownloads.check(host, path) } catch (_: FileNotFoundException) { null }
+                    if (path == null) null else try {
+                        val file = PublicDownloads.check(host, path)
+                        JSObject().put("path", file.path).put("name", file.name)
+                    } catch (_: FileNotFoundException) { null }
                 }
-                invoke.resolve(JSObject().put("paths", JSONArray(checked)))
+                invoke.resolve(JSObject().put("files", JSONArray(checked)))
             } catch (_: Exception) { invoke.reject("파일을 확인하지 못했어요.") }
         }
     }

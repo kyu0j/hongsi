@@ -34,7 +34,7 @@
     <li class:got>
       <button class="fmain" onclick={() => press(i)} disabled={busy} title={got ? '눌러서 바로 열기' : '눌러서 받기'}>
         <span class="ficon" class:spin={busy}><Icon name={busy ? 'refresh' : got ? 'tick' : 'download'} size={17} stroke={got ? 2.4 : 1.9} /></span>
-        <span class="fname">{f.name}</span>
+        <span class="fname">{got?.name ?? f.name}</span>
         <span class="fsize">{busy ? '받는 중…' : got ? '받음' : size(f.size)}</span>
       </button>
       {#if got && isApp}

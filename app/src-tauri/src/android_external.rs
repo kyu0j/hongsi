@@ -4,6 +4,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
+use super::SavedDownload;
 
 struct External(tauri::plugin::PluginHandle<Wry>);
 
@@ -13,12 +14,9 @@ impl Drop for StagedDownload {
 }
 
 #[derive(Deserialize)]
-struct SavedDownload { path: String }
+struct CheckedDownloads { files: Vec<Option<SavedDownload>> }
 
-#[derive(Deserialize)]
-struct CheckedDownloads { paths: Vec<Option<String>> }
-
-pub async fn save_download(app: &AppHandle, name: &str, bytes: &[u8]) -> Result<String, String> {
+pub async fn save_download(app: &AppHandle, name: &str, bytes: &[u8]) -> Result<SavedDownload, String> {
     static NEXT: AtomicU64 = AtomicU64::new(0);
     let failed = || "파일을 저장하지 못했어요.".to_string();
     let dir = app.path().app_cache_dir().map_err(|_| failed())?.join("download-staging");
@@ -38,13 +36,13 @@ pub async fn save_download(app: &AppHandle, name: &str, bytes: &[u8]) -> Result<
             }
             failed()
         })?;
-    Ok(result.path)
+    Ok(result)
 }
 
-pub async fn check_downloads(app: &AppHandle, paths: Vec<Option<String>>) -> Result<Vec<Option<String>>, String> {
+pub async fn check_downloads(app: &AppHandle, paths: Vec<Option<String>>) -> Result<Vec<Option<SavedDownload>>, String> {
     let result: CheckedDownloads = app.state::<External>().0.run_mobile_plugin_async("checkDownloads",
         serde_json::json!({"paths": paths})).await.map_err(|_| "파일을 확인하지 못했어요.".to_string())?;
-    Ok(result.paths)
+    Ok(result.files)
 }
 
 pub fn init() -> TauriPlugin<Wry> {

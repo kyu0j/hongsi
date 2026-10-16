@@ -21,6 +21,7 @@ import type {
   ModuleContents,
   Profile,
   RecentSeat,
+  SavedDownload,
   SeatPeriod,
   SeatSession,
   SeatsData,
@@ -370,8 +371,8 @@ export const native = {
     });
   },
   autoLoginEnabled: () => native.call<boolean>('auto_login_enabled'),
-  download: (source: FileSource, name: string) => native.call<string>('download', { source, name }),
-  checkDownloads: (paths: (string | null)[]) => native.call<(string | null)[]>('check_downloads', { paths }),
+  download: (source: FileSource, name: string) => native.call<SavedDownload>('download', { source, name }),
+  checkDownloads: (paths: (string | null)[]) => native.call<(SavedDownload | null)[]>('check_downloads', { paths }),
   openFile: (path: string) => native.call<void>('open_file', { path }),
   revealFile: (path: string) => native.call<void>('reveal_file', { path }),
   openUrl: (url: string) => native.call<void>('open_url', { url }),
