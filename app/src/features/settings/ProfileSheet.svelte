@@ -83,7 +83,7 @@
     <div class="set">
       <div class="set-label"><span>학교 정보 업데이트</span>
         <button class="archive-update" disabled={calendarArchive.loading || calendarArchive.updating || !accountPreferences.loaded} aria-busy={calendarArchive.loading || calendarArchive.updating} onclick={updateCalendarArchive}>
-          <span class:spinning={calendarArchive.loading || calendarArchive.updating}><Icon name="refresh" size={15} /></span>업데이트
+          <span class:spin={calendarArchive.loading || calendarArchive.updating}><Icon name="refresh" size={15} /></span>업데이트
         </button>
       </div>
       <p class="set-hint muted">학교 정보(수업 과목 등)를 수동으로 업데이트해요.</p>
@@ -265,8 +265,6 @@
 
   .archive-update { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; color: var(--primary); font-size: 12px; font-weight: 650; }
   .archive-update > span { display: flex; }
-  .spinning { animation: archive-spin .9s linear infinite; }
-  @keyframes archive-spin { to { transform: rotate(360deg); } }
   .set-hint {
     font-size: 12px;
   }

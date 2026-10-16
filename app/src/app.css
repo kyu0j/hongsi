@@ -502,7 +502,7 @@ a.btn {
   font-size: 15px;
 }
 
-.spin {
+.spin > svg {
   animation: spin 0.9s linear infinite;
 }
 
