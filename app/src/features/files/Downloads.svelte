@@ -9,15 +9,37 @@
   import EmptyState from '../../shared/ui/EmptyState.svelte';
   import Icon from '../../shared/ui/Icon.svelte';
   import Sheet from '../../shared/ui/Sheet.svelte';
+  const PAGE_SIZE = 10;
   let open = $state(false);
+  let visibleCount = $state(PAGE_SIZE);
+  let listElement: HTMLUListElement | undefined = $state();
+  let moreVisible = $state(false);
+  const loadingMore = $derived(open && moreVisible && visibleCount < downloads.list.length);
+
+  function observeMore(node: HTMLElement) {
+    const observer = new IntersectionObserver((entries) => {
+      moreVisible = entries.some((entry) => entry.isIntersecting);
+    }, { root: node.closest('.body'), rootMargin: '0px 0px 80px 0px' });
+    observer.observe(node);
+    return { destroy: () => { observer.disconnect(); moreVisible = false; } };
+  }
+
+  $effect(() => {
+    if (!loadingMore) return;
+    const nextCount = Math.min(visibleCount + PAGE_SIZE, downloads.list.length);
+    const timer = window.setTimeout(() => { visibleCount = nextCount; }, 200);
+    return () => window.clearTimeout(timer);
+  });
 
   async function show() {
     const version = sessionVersion();
+    listElement?.closest('.body')?.scrollTo({ top: 0 });
+    visibleCount = PAGE_SIZE;
+    open = true;
     try {
       await refreshDownloads();
-      if (isCurrentSession(version)) open = true;
     } catch (error) {
-      if (isCurrentSession(version)) toastOnce(fileErrorText(error, '파일을 확인하지 못했어요.'), 'error');
+      if (open && isCurrentSession(version)) toastOnce(fileErrorText(error, '파일을 확인하지 못했어요.'), 'error');
     }
   }
 
@@ -39,9 +61,9 @@
 <button class="icon-btn press-feedback" use:pressFeedback onclick={show} aria-label="받은 파일" title="받은 파일"><Icon name="inbox" size={23} /></button>
 <Sheet bind:open title="받은 파일">
   {#if downloads.list.length}
-    <ul class="files">
-      {#each downloads.list as d (d.id + d.at)}
-        <li>
+    <ul class="files" bind:this={listElement}>
+      {#each downloads.list.slice(0, visibleCount) as d, i (d.id + d.at)}
+        <li class:added={i >= PAGE_SIZE}>
           <span class="ficon"><Icon name="file" size={18} /></span>
           <div class="finfo">
             <strong>{d.name}</strong>
@@ -56,12 +78,36 @@
         </li>
       {/each}
     </ul>
+    {#if visibleCount < downloads.list.length}
+      <div class="load-more" use:observeMore>
+        {#if loadingMore}<span class="spin" role="status" aria-label="파일 목록 불러오는 중"><Icon name="refresh" size={22} /></span>{/if}
+      </div>
+    {/if}
   {:else}
     <EmptyState message="아직 받은 파일이 없어요." detail="과제 상세에서 첨부 파일을 다운로드하면 여기에 모여요." />
   {/if}
 
 </Sheet>
 <style>
+  .load-more {
+    display: grid;
+    place-items: center;
+    height: 48px;
+    color: var(--text-3);
+    overflow-anchor: none;
+  }
+
+  .added { animation: appear 180ms ease-out; }
+
+  @keyframes appear {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .added { animation: none; }
+  }
+
   .files {
     list-style: none;
     margin: 0;

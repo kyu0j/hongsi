@@ -184,6 +184,8 @@ export type Todo = {
 };
 export type TodoInput = Omit<Todo, 'id' | 'doneAt' | 'due'> & { due: number };
 
+export type SavedDownload = { path: string; name: string };
+
 export type DownloadRecord = {
   id: string;
   name: string;

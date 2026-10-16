@@ -5,10 +5,12 @@ import { connectionError, responseError, responseFormat } from '../../shared/api
 import { errorText, reportServer } from '../../shared/api/net.svelte';
 import { inSession, isCurrentSession, sessionVersion, onSessionChange, readUserData, writeUserData } from '../../shared/state/session';
 import { toast, toastOnce } from '../../shared/state/ui.svelte';
-import type { DownloadRecord, FileSource } from '../../shared/types';
+import type { DownloadRecord, FileSource, SavedDownload } from '../../shared/types';
 
 const KEY = 'downloads';
+const CHECK_BATCH_SIZE = 100;
 const load = () => readUserData<DownloadRecord[]>(KEY, []);
+const recordKey = (record: DownloadRecord) => JSON.stringify([record.id, record.at, record.path]);
 
 export const downloads = $state({ list: load(), busy: '' });
 let checking: { version: number; promise: Promise<void> } | null = null;
@@ -18,17 +20,24 @@ export function refreshDownloads(): Promise<void> {
   const version = sessionVersion();
   if (checking?.version === version) return checking.promise;
   const records = downloads.list.map((record) => ({ ...record }));
-  const promise = native.checkDownloads(records.map((record) => record.path)).then((paths) => {
-    if (!isCurrentSession(version)) return;
-    if (paths.length !== records.length) throw new Error('파일을 확인하지 못했어요.');
+  const promise = (async () => {
+    const checked = new Map<string, SavedDownload | null>();
+    for (let offset = 0; offset < records.length; offset += CHECK_BATCH_SIZE) {
+      if (!isCurrentSession(version)) return;
+      const batch = records.slice(offset, offset + CHECK_BATCH_SIZE);
+      const files = await native.checkDownloads(batch.map((record) => record.path));
+      if (!isCurrentSession(version)) return;
+      if (files.length !== batch.length) throw new Error('파일을 확인하지 못했어요.');
+      batch.forEach((record, index) => checked.set(recordKey(record), files[index]));
+    }
     downloads.list = downloads.list.flatMap((record) => {
-      const index = records.findIndex((saved) => saved.id === record.id && saved.at === record.at && saved.path === record.path);
-      if (index < 0) return [record];
-      const path = paths[index];
-      return path ? [{ ...record, path }] : [];
+      const key = recordKey(record);
+      if (!checked.has(key)) return [record];
+      const file = checked.get(key);
+      return file ? [{ ...record, path: file.path, name: file.name }] : [];
     });
     writeUserData(KEY, downloads.list);
-  });
+  })();
   checking = { version, promise };
   const finish = () => { if (checking?.promise === promise) checking = null; };
   void promise.then(finish, finish);
@@ -42,7 +51,7 @@ function forgetMissing(record: DownloadRecord, error: unknown, version: number) 
 }
 
 function remember(record: DownloadRecord) {
-  downloads.list = [record, ...downloads.list.filter((d) => d.id !== record.id || d.path !== record.path)].slice(0, 30);
+  downloads.list = [record, ...downloads.list.filter((d) => d.id !== record.id || d.path !== record.path)];
   writeUserData(KEY, downloads.list);
 }
 
@@ -112,15 +121,15 @@ export async function downloadFile(src: FileSource, name: string, course: string
   const id = fileId(src);
   downloads.busy = id;
   try {
-    const path = isApp ? await native.download(src, name) : (await browserDownload(src, name), null);
+    const file = isApp ? await native.download(src, name) : (await browserDownload(src, name), null);
     if (!isCurrentSession(version)) return null;
     const record: DownloadRecord = {
       id,
-      name: name.split('/').pop() || name,
+      name: file?.name ?? (name.split('/').pop() || name),
       course,
       source: src,
       at: Date.now(),
-      path,
+      path: file?.path ?? null,
     };
     remember(record);
     toast(isIOS ? '파일 앱의 ‘홍시’에 저장했어요.' : isApp ? '다운로드 폴더 안의 ‘홍시’ 폴더에 저장했어요.' : '다운로드했어요.', 'success');

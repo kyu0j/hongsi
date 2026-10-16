@@ -607,13 +607,19 @@ async fn fetch_file(direct: &Direct, source: &FileSource) -> Result<(String, Vec
     }
 }
 
+#[derive(Deserialize, Serialize)]
+struct SavedDownload {
+    path: String,
+    name: String,
+}
+
 #[tauri::command]
 async fn download(
     app: AppHandle,
     shell: State<'_, Arc<Shell>>,
     source: FileSource,
     name: String,
-) -> Result<String, String> {
+) -> Result<SavedDownload, String> {
     let _operations = shell.operations.read().await;
     if let Err(reply) = ensure_login(&shell).await {
         return Err(message(&reply));
@@ -644,17 +650,19 @@ async fn download(
     {
         let path = unique_path(&download_dir(&app)?, &safe_name(&name));
         std::fs::write(&path, &bytes).map_err(|_| "파일을 저장하지 못했어요.".to_string())?;
-        download_reference(&path)
+        saved_download(&path)
     }
 }
 
 #[cfg(not(target_os = "android"))]
-fn download_reference(path: &Path) -> Result<String, String> {
+fn saved_download(path: &Path) -> Result<SavedDownload, String> {
+    let name = path.file_name().map(|name| name.to_string_lossy().into_owned())
+        .ok_or_else(|| "열 수 없는 경로예요.".to_string())?;
     #[cfg(target_os = "ios")]
-    return path.file_name().map(|name| name.to_string_lossy().into_owned())
-        .ok_or_else(|| "열 수 없는 경로예요.".to_string());
+    let path = name.clone();
     #[cfg(not(target_os = "ios"))]
-    Ok(path.to_string_lossy().into_owned())
+    let path = path.to_string_lossy().into_owned();
+    Ok(SavedDownload { path, name })
 }
 
 #[cfg(not(target_os = "android"))]
@@ -702,7 +710,7 @@ fn checked(app: &AppHandle, path: &str) -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-async fn check_downloads(app: AppHandle, paths: Vec<Option<String>>) -> Result<Vec<Option<String>>, String> {
+async fn check_downloads(app: AppHandle, paths: Vec<Option<String>>) -> Result<Vec<Option<SavedDownload>>, String> {
     if paths.len() > 100 {
         return Err("파일을 확인하지 못했어요.".into());
     }
@@ -715,7 +723,7 @@ async fn check_downloads(app: AppHandle, paths: Vec<Option<String>>) -> Result<V
         paths.into_iter().map(|path| {
             let Some(path) = path else { return Ok(None) };
             match download_file_path(&dir, &path) {
-                Ok(file) => download_reference(&file).map(Some),
+                Ok(file) => saved_download(&file).map(Some),
                 Err(error) if error == "파일이 없어요." || error == "열 수 없는 경로예요." => Ok(None),
                 Err(error) => Err(error),
             }
