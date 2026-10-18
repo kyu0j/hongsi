@@ -15,6 +15,7 @@
   import { seatSession, seats } from '../features/seats/seat-resources.svelte';
   import { timetable } from '../features/attendance/attendance-resources.svelte';
   import { todos } from '../features/calendar/todo-resource.svelte';
+  import { watchVisibleRefresh } from '../shared/state/visible-refresh';
   import { go, openSeats } from '../shared/state/ui.svelte';
   import type { Building, CalendarItem, Todo } from '../shared/types';
   import AgendaItem from '../features/calendar/AgendaItem.svelte';
@@ -34,10 +35,10 @@
 
   onMount(() => {
     seatSession.load();
-    seats.load();
     calendar.load();
     meals.load();
     timetable.load();
+    return watchVisibleRefresh(60_000, (periodic) => seats.load(periodic));
   });
 
   const colors = $derived(courseColors(calendar.data?.courses ?? []));

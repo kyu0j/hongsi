@@ -176,7 +176,7 @@
   $effect(() => {
     if (!bootError) return;
     const again = () => document.visibilityState === 'visible' && void boot();
-    const t = setInterval(again, 20_000);
+    const t = setInterval(again, 3_000);
     window.addEventListener('online', again);
     return () => {
       clearInterval(t);
