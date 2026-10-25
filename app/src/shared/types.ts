@@ -29,7 +29,7 @@ export type AttendanceReceipt = { lecture: ActiveLecture; date: string; kind: 'p
 export type AttendanceSubmission = { message: string; receipt: AttendanceReceipt | null; synced: boolean };
 export type AttendanceMark = { title?: string; period?: string; date: string; mark: string; kind: MarkKind };
 export type AttendanceWeek = { week: number; sessions: AttendanceMark[] };
-export type AttendanceSummary = {
+type AttendanceSummary = {
   present: number;
   late: number;
   absent: number;
@@ -86,7 +86,7 @@ export type CalendarItem = {
   submit: SubmitConfig | null;
 };
 
-export type SubmitConfig = {
+type SubmitConfig = {
   files: boolean;
   maxFiles: number;
   maxBytes: number;
@@ -111,7 +111,7 @@ export type SubmissionView = {
 };
 
 export type SubmissionStage = 'prepare' | 'transfer' | 'upload' | 'submit' | 'verify';
-export type SubmissionProgress = {
+type SubmissionProgress = {
   stage: SubmissionStage;
   fileName: string | null;
   fileCount: number;
@@ -139,11 +139,11 @@ export type CalendarData = {
   semesterDisplay: SemesterDisplay; currentTerm: AcademicTerm | null; failedCourseIds?: number[];
 };
 
-export type Meal = { name: string; start: string | null; end: string | null; price: string | null; items: string[] };
+type Meal = { name: string; start: string | null; end: string | null; price: string | null; items: string[] };
 export type MealPlace = { name: string; meals: Meal[] };
 export type MealDay = { date: string; weekday: string; places: MealPlace[] };
 
-export type SeatState = 'free' | 'used' | 'blocked';
+type SeatState = 'free' | 'used' | 'blocked';
 export type SeatCell = { no: number; state: SeatState };
 export type Room = { no: number; name: string; total: number; used: number; free: number; grid: (SeatCell | null)[][] };
 export type Building = { id: string; name: string; rooms: Room[] };

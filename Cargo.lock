@@ -2309,7 +2309,6 @@ name = "hongsi-direct"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "hongsi-config",
  "hongsi-core",
  "reqwest 0.12.28",
  "serde",

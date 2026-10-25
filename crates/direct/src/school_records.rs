@@ -6,13 +6,14 @@ use std::time::Duration;
 
 impl Direct {
     pub(super) async fn shared_school(&self, kind: &str, refresh: bool) -> R<Value> {
-        self.shared_school_for(kind, refresh, false).await
+        self.shared_school_for(kind, refresh, false, false).await
     }
     pub(super) async fn shared_school_for(
         &self,
         kind: &str,
         refresh: bool,
         current_only: bool,
+        manual: bool,
     ) -> R<Value> {
         let generation = self.generation();
         let path = format!("/api/school/{kind}");
@@ -20,7 +21,7 @@ impl Direct {
             .server(
                 &Method::POST,
                 &path,
-                Some(&json!({"refresh":refresh,"currentOnly":current_only})),
+                Some(&json!({"refresh":refresh,"currentOnly":current_only,"manual":manual})),
             )
             .await;
         if claim.status != 200 {

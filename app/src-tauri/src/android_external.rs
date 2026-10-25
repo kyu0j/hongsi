@@ -83,3 +83,12 @@ pub async fn location_permission(app: &AppHandle, action: &str) -> Result<serde_
     app.state::<External>().0.run_mobile_plugin_async("locationPermission", serde_json::json!({"value": action}))
         .await.map_err(|_| "위치 권한을 확인하지 못했어요.".to_string())
 }
+
+pub async fn map_tracking(app: &AppHandle, args: serde_json::Value) -> Result<serde_json::Value, String> {
+    app.state::<External>().0.run_mobile_plugin_async("mapTracking", args).await.map_err(|error| {
+        if let tauri::plugin::mobile::PluginInvokeError::InvokeRejected(response) = error {
+            if let Some(message) = response.message { return message; }
+        }
+        "위치를 확인하지 못했어요.".into()
+    })
+}

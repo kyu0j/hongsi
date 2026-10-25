@@ -10,6 +10,7 @@ final class HongsiLocation: NSObject, @preconcurrency CLLocationManagerDelegate 
     private var mayRequestPermission = false
 
     override init() { super.init(); manager.delegate = self; manager.desiredAccuracy = kCLLocationAccuracyBest }
+    var precise: Bool { manager.accuracyAuthorization == .fullAccuracy }
     var permission: String {
         switch manager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse: return "granted"

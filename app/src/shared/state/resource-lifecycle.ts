@@ -9,7 +9,7 @@ import { lectures, attendance, attendanceReceipts, timetable } from '../../featu
 import { todos } from '../../features/calendar/todo-resource.svelte';
 import { notices } from '../../features/classroom/notice-resource.svelte';
 
-export const allResources = [calendar, seats, seatSession, meals, lectures, attendance, attendanceReceipts, timetable, todos, notices];
+const allResources = [calendar, seats, seatSession, meals, lectures, attendance, attendanceReceipts, timetable, todos, notices];
 onSessionChange(() => {
   allResources.forEach((r) => r.restore());
 });

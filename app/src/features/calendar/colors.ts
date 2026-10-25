@@ -1,6 +1,6 @@
 import type { CalendarItem, Course, ItemStatus } from '../../shared/types';
 
-export const RAINBOW = [
+const RAINBOW = [
   '#ef4444',  
   '#f97316',  
   '#f5a50b',  
@@ -33,7 +33,7 @@ export function courseColors(courses: Course[]): Map<number, string> {
   return colors;
 }
 
-export type Tone = 'ok' | 'warn' | 'danger' | 'muted' | 'info';
+type Tone = 'ok' | 'warn' | 'danger' | 'muted' | 'info';
 
 const STATUS: Record<ItemStatus, { label: string; tone: Tone }> = {
   submitted: { label: '제출 완료', tone: 'ok' },

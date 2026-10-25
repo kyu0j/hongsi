@@ -62,7 +62,7 @@ targets:
         UIRequiredDeviceCapabilities: [arm64]
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
-        NSLocationWhenInUseUsageDescription: 출석 확인 시 학교에 현재 위치를 전달하기 위해 사용합니다.
+        NSLocationWhenInUseUsageDescription: 학교 지도에 현재 위치를 표시하고 출석 확인 시 학교에 위치를 전달하기 위해 사용합니다.
         NSPhotoLibraryUsageDescription: 과제에 제출할 사진을 선택하기 위해 사용합니다.
         NSCameraUsageDescription: 과제에 제출할 사진을 촬영하기 위해 사용합니다.
         UIFileSharingEnabled: true

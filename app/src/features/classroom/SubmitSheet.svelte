@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
-  import { api } from '../../shared/api/api';
+  import { refreshAssignment } from '../calendar/calendar-resources.svelte';
   import { dueDateTime, sentenceLines } from '../../shared/utils/format';
   import { errorText, writeBlocked } from '../../shared/api/net.svelte';
   import { handleAuthError } from '../auth/auth-state.svelte';
@@ -46,8 +46,7 @@
     step = 'edit';
     discardOpen = false;
     untrack(() => { void resumeSubmission(operation); });
-    api
-      .submission(cmid)
+    refreshAssignment(cmid)
       .then((v) => {
         if (request !== generation || !isCurrentSession(version)) return;
         view = v;
@@ -130,7 +129,7 @@
     const request = generation, version = sessionVersion(), target = operation;
     target.checking = true;
     try {
-      const current = await api.submission(cmid);
+      const current = await refreshAssignment(cmid);
       if (request !== generation || !isCurrentSession(version)) return;
       view = current;
       keep = new Set(current.info.files.map((file) => file.name));

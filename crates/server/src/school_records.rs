@@ -24,6 +24,17 @@ pub enum Access {
     Fetch(String),
     Waiting,
 }
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Refresh {
+    Cached,
+    Manual,
+    Forced,
+}
+impl From<bool> for Refresh {
+    fn from(refresh: bool) -> Self {
+        if refresh { Self::Forced } else { Self::Cached }
+    }
+}
 fn valid(kind: &str) -> bool {
     matches!(kind, "calendar" | "archive" | "timetable" | "notices")
 }
@@ -42,7 +53,7 @@ pub async fn acquire(
     db: &PgPool,
     uid: i64,
     kind: &str,
-    refresh: bool,
+    refresh: Refresh,
     started: i64,
 ) -> Result<Access, ApiError> {
     let mut tx = db.begin().await?;
@@ -69,14 +80,18 @@ pub async fn acquire(
     }
     let attempted = meta["attemptAt"].as_i64().unwrap_or(0);
     let success = meta["successAt"].as_i64().unwrap_or(0);
+    let completed = meta["completedAt"].as_i64().unwrap_or(success);
     let error = meta["error"].as_str();
     let static_data = matches!(kind, "archive" | "timetable");
-    if !refresh && static_data && success > 0 {
+    if refresh == Refresh::Cached && static_data && success > 0 {
         return Ok(Access::Ready);
     }
     let fresh = success > 0 && error.is_none() && now - attempted < 300_000;
-    let shared = attempted >= started && (success >= attempted || error.is_some());
-    if (!refresh && fresh) || shared || (!refresh && now - attempted < 300_000) {
+    let shared = (attempted >= started && (success >= attempted || error.is_some()))
+        || (refresh != Refresh::Forced && completed >= started);
+    let recent_manual = refresh == Refresh::Manual && kind == "calendar"
+        && success > 0 && error.is_none() && completed > 0 && now - completed < 15_000;
+    if (refresh == Refresh::Cached && (fresh || now - attempted < 300_000)) || shared || recent_manual {
         if let Some(code) = error {
             if success == 0 || matches!(code, "session_expired" | "classroom_token_expired") {
                 return Err(stored_error(code));
@@ -111,8 +126,9 @@ pub async fn begin(
     db: &PgPool,
     uid: i64,
     kind: &str,
-    refresh: bool,
+    refresh: impl Into<Refresh>,
 ) -> Result<Option<String>, ApiError> {
+    let refresh = refresh.into();
     let started = Utc::now().timestamp_millis();
     for _ in 0..520 {
         match acquire(db, uid, kind, refresh, started).await? {
@@ -187,6 +203,7 @@ pub async fn finish(
     let mut changes = serde_json::Map::new();
     meta.as_object_mut().unwrap().remove("token");
     meta.as_object_mut().unwrap().remove("until");
+    meta["completedAt"] = json!(now);
     if let Some(code) = error {
         meta["error"] = json!(
             if matches!(code, "session_expired" | "classroom_token_expired" | "school_changed" | "school_error" | "timeout") {
@@ -252,7 +269,7 @@ pub async fn finish(
                 )
                 .await?;
                 if kind == "archive" {
-                    changes.insert("calendar".into(),json!({"attemptAt":now,"successAt":now,"revision":record.metadata["calendar"]["revision"].as_i64().unwrap_or(0)+i64::from(changed)}));
+                    changes.insert("calendar".into(),json!({"attemptAt":now,"successAt":now,"completedAt":now,"revision":record.metadata["calendar"]["revision"].as_i64().unwrap_or(0)+i64::from(changed)}));
                 }
                 changed
             }
@@ -314,13 +331,14 @@ pub async fn read(
     uid: i64,
     school: &SchoolSession,
     kind: &str,
-    refresh: bool,
+    refresh: impl Into<Refresh>,
 ) -> Result<Value, ApiError> {
+    let refresh = refresh.into();
     if let Some(token) = begin(db, uid, kind, refresh).await? {
         let previous = catalog(db, uid).await?;
         let result = tokio::time::timeout(
             Duration::from_secs(100),
-            fetch(school, kind, previous, refresh),
+            fetch(school, kind, previous, refresh != Refresh::Cached),
         )
         .await
         .unwrap_or_else(|_| {
@@ -361,6 +379,8 @@ pub async fn rendered(db: &PgPool, uid: i64, kind: &str) -> Result<Value, ApiErr
 pub struct Options {
     #[serde(default)]
     refresh: bool,
+    #[serde(default)]
+    manual: bool,
     #[serde(default, rename = "currentOnly")]
     current_only: bool,
 }
@@ -373,7 +393,12 @@ pub async fn start(
     if !valid(&kind) {
         return Err(ApiError::bad_request("잘못된 요청이에요."));
     }
-    match begin(&st.db, user.session.user_id, &kind, options.refresh).await? {
+    let refresh = if options.refresh && options.manual && kind == "calendar" {
+        Refresh::Manual
+    } else {
+        options.refresh.into()
+    };
+    match begin(&st.db, user.session.user_id, &kind, refresh).await? {
         None => Ok(Json(
             json!({"data":rendered(&st.db,user.session.user_id,if kind=="archive" && options.current_only {"calendar"}else{&kind}).await?}),
         )),

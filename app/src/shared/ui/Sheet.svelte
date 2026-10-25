@@ -22,6 +22,7 @@
     onbeforeclose,
     onclose,
     children,
+    titleActions,
     headerActions,
     footer,
   }: {
@@ -36,6 +37,7 @@
     onbeforeclose?: () => boolean;
     onclose?: () => void;
     children?: Snippet;
+    titleActions?: Snippet;
     headerActions?: Snippet;
     footer?: Snippet;
   } = $props();
@@ -54,6 +56,7 @@
   function resetDrag() { dragging = false; dragY = 0; }
   function canDrag(target: HTMLElement) {
     if (!phone.current || confirm || !isTopSheet(panel)) return false;
+    if (target.closest('[data-sheet-no-drag]')) return false;
     if (target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="slider"], [role="listbox"]')) return false;
     for (let node: HTMLElement | null = target; node && node !== panel; node = node.parentElement) {
       if (node.scrollTop > 0) return false;
@@ -142,10 +145,13 @@
   >
     <div class="grip" aria-hidden="true"></div>
     <header class:has-actions={!!headerActions}>
-      <h2 class:with-meta={!!titleMeta} class:with-icon={!!titleIcon}>
-        {#if titleIcon}<span class="title-icon"><Icon name={titleIcon} size={21} /></span>{/if}
-        {#if titleMeta}<span>{title}</span><span class="title-meta">{titleMeta}</span>{:else}{title}{/if}
-      </h2>
+      <div class="title-group">
+        <h2 class:with-meta={!!titleMeta} class:with-icon={!!titleIcon}>
+          {#if titleIcon}<span class="title-icon"><Icon name={titleIcon} size={21} /></span>{/if}
+          {#if titleMeta}<span>{title}</span><span class="title-meta">{titleMeta}</span>{:else}{title}{/if}
+        </h2>
+        {#if titleActions}{@render titleActions()}{/if}
+      </div>
       {#if headerActions}{@render headerActions()}{/if}
       {#if showClose}<button class="icon-btn" disabled={closeDisabled} onclick={close} aria-label="닫기"><Icon name="close" /></button>{/if}
     </header>
@@ -207,7 +213,8 @@
     flex: none;
   }
 
-  header.has-actions h2 { margin-right: auto; }
+  .title-group { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  header.has-actions .title-group { margin-right: auto; }
 
   .sheet.message header { padding: 24px 20px; }
 

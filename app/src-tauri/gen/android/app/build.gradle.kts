@@ -119,6 +119,7 @@ rust {
 }
 
 dependencies {
+    implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
     if (distribution == "play") implementation("com.google.android.play:app-update:2.1.0")
     implementation("androidx.webkit:webkit:1.17.1")

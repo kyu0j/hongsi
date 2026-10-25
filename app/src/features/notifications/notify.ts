@@ -15,7 +15,7 @@ const PERMISSION_ASKED = 'hc:pref:notification-permission-asked';
 const deviceFlag = (key: string) => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
 const setDeviceFlag = (key: string) => { try { localStorage.setItem(key, '1'); } catch { } };
 
-export function queueNotificationIntent(raw: unknown) {
+function queueNotificationIntent(raw: unknown) {
   const intent = parseIntent(raw);
   if (!intent) return;
   state.pending = intent;
@@ -27,7 +27,7 @@ export function takeNotificationIntent() {
   try { sessionStorage.removeItem(PENDING); } catch {   }
   return intent;
 }
-export function notificationToast(title: string, body: string, raw: unknown) {
+function notificationToast(title: string, body: string, raw: unknown) {
   const intent = parseIntent(raw);
   if (!state.enabled || !intent || intent.account !== sessionUser()) return;
   toast(title, 'alarm', 8000, () => queueNotificationIntent(intent), intent.target.kind === 'seat' ? undefined : body.trim() || undefined);

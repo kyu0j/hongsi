@@ -31,7 +31,7 @@ function alignedElf(bytes, name) {
   if (!loads) throw new Error(`${name}: no PT_LOAD headers`);
 }
 
-export async function packagePlayBundle({ aab, output, stem }) {
+async function packagePlayBundle({ aab, output, stem }) {
   if (!/^hongsi-[A-Za-z0-9][A-Za-z0-9._-]*$/.test(stem ?? '')) throw new Error('HONGSI_RELEASE_ASSET_STEM is required.');
   const file = resolve(aab);
   execFileSync('jarsigner', ['-verify', file], { stdio: 'inherit' });

@@ -6,7 +6,7 @@ import { releaseIdentity, sha256 } from './package-android-release.mjs';
 import { urlSegment } from './release-version.mjs';
 import { repositoryName } from './public-env.mjs';
 
-export async function publishRelease({ repository, tag, directory, prerelease = false, run = args => execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }) }) {
+async function publishRelease({ repository, tag, directory, prerelease = false, run = args => execFileSync('gh', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }) }) {
   const manifestPath = resolve(directory, 'latest.json');
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
   const { name, url, stem } = releaseIdentity(repository, tag, manifest.version, prerelease);

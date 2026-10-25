@@ -1,0 +1,2695 @@
+{
+  "buildings": {
+    "L": {
+      "places": [
+        {
+          "floor": "4",
+          "kind": "cafe",
+          "name": "카페나무"
+        }
+      ]
+    },
+    "H": {
+      "places": [
+        {
+          "floor": "3",
+          "kind": "pc",
+          "name": "공용 PC실"
+        },
+        {
+          "floor": "3",
+          "kind": "cafe",
+          "name": "카페ling"
+        },
+        {
+          "floor": "3",
+          "kind": "study",
+          "name": "그룹스터디룸"
+        },
+        {
+          "floor": "1",
+          "kind": "study",
+          "name": "캐럴·미디어룸"
+        }
+      ]
+    },
+    "Q": {
+      "places": [
+        {
+          "floor": "8",
+          "kind": "study",
+          "name": "프레젠테이션룸"
+        },
+        {
+          "floor": "1",
+          "kind": "lounge",
+          "name": "여학생 휴게실"
+        }
+      ]
+    },
+    "G": {
+      "places": [
+        {
+          "floor": "6",
+          "kind": "study",
+          "name": "일반열람실 3"
+        },
+        {
+          "floor": "5",
+          "kind": "study",
+          "name": "일반열람실 1·2"
+        },
+        {
+          "floor": "5",
+          "kind": "study",
+          "name": "노트북 열람실"
+        },
+        {
+          "floor": "1",
+          "kind": "printer",
+          "name": "출력센터"
+        },
+        {
+          "floor": "B1",
+          "kind": "lounge",
+          "name": "라운지"
+        },
+        {
+          "floor": "B1",
+          "kind": "study",
+          "name": "공동학습실"
+        }
+      ]
+    },
+    "K": {
+      "places": [
+        {
+          "floor": "6",
+          "kind": "pc",
+          "name": "공용 PC실"
+        }
+      ]
+    },
+    "R": {
+      "places": [
+        {
+          "floor": "16",
+          "kind": "food",
+          "name": "마루샤브 스카이"
+        },
+        {
+          "floor": "9",
+          "kind": "pc",
+          "name": "PC실"
+        },
+        {
+          "floor": "8",
+          "kind": "study",
+          "name": "법학도서관 열람실"
+        },
+        {
+          "floor": "8",
+          "kind": "study",
+          "name": "공동학습실"
+        },
+        {
+          "floor": "7",
+          "kind": "printer",
+          "name": "시각디자인과 프린트실"
+        },
+        {
+          "floor": "3",
+          "kind": "store",
+          "name": "편의점"
+        },
+        {
+          "floor": "2",
+          "kind": "cafe",
+          "name": "파브리카"
+        },
+        {
+          "floor": "2",
+          "kind": "cafe",
+          "name": "그라찌에"
+        },
+        {
+          "floor": "LF",
+          "kind": "cafe",
+          "name": "카페나무"
+        },
+        {
+          "floor": "LF",
+          "kind": "study",
+          "name": "카페나무 세미나실"
+        },
+        {
+          "floor": "B2",
+          "kind": "cafe",
+          "name": "프루츠카페"
+        }
+      ]
+    },
+    "F": {
+      "places": [
+        {
+          "floor": "1",
+          "kind": "pc",
+          "name": "공용 PC실"
+        }
+      ]
+    },
+    "MH": {
+      "places": [
+        {
+          "floor": "16",
+          "kind": "food",
+          "name": "교직원식당"
+        },
+        {
+          "floor": "1",
+          "kind": "printer",
+          "name": "프린터"
+        }
+      ]
+    },
+    "B": {
+      "places": [
+        {
+          "floor": "1",
+          "kind": "pc",
+          "name": "공용 PC실"
+        }
+      ]
+    },
+    "A": {
+      "places": [
+        {
+          "floor": "1",
+          "kind": "cafe",
+          "name": "카페드림"
+        }
+      ]
+    },
+    "C": {
+      "places": [
+        {
+          "floor": "8",
+          "kind": "cafe",
+          "name": "카페나무"
+        },
+        {
+          "floor": "4",
+          "kind": "pc",
+          "name": "공용 PC실"
+        }
+      ]
+    },
+    "D": {
+      "places": [
+        {
+          "floor": "B1",
+          "kind": "lounge",
+          "name": "남학생 휴게실"
+        }
+      ]
+    },
+    "D2": {
+      "places": [
+        {
+          "floor": "B1",
+          "kind": "cafe",
+          "name": "캠퍼"
+        },
+        {
+          "floor": "B1",
+          "kind": "store",
+          "name": "이마트24"
+        },
+        {
+          "floor": "B1",
+          "kind": "food",
+          "name": "향차이"
+        },
+        {
+          "floor": "B2",
+          "kind": "food",
+          "name": "학생식당"
+        },
+        {
+          "floor": "B2",
+          "kind": "food",
+          "name": "맘스터치"
+        },
+        {
+          "floor": "B2",
+          "kind": "study",
+          "name": "기숙사 열람실"
+        }
+      ]
+    },
+    "T": {
+      "places": [
+        {
+          "floor": "4",
+          "kind": "study",
+          "name": "열람실"
+        },
+        {
+          "floor": "3",
+          "kind": "study",
+          "name": "열람실"
+        }
+      ]
+    }
+  },
+  "markers": [
+    {
+      "b": "I",
+      "kind": "stairs",
+      "coord": [
+        126.92727549,
+        37.55162578
+      ],
+      "estimated": true
+    },
+    {
+      "b": "I",
+      "kind": "stairs",
+      "coord": [
+        126.92712566,
+        37.55147409
+      ],
+      "estimated": true
+    },
+    {
+      "b": "I",
+      "kind": "toilet",
+      "coord": [
+        126.92734316,
+        37.55160154
+      ],
+      "estimated": true
+    },
+    {
+      "b": "J",
+      "kind": "elevator",
+      "coord": [
+        126.92683203,
+        37.55178437
+      ],
+      "estimated": true
+    },
+    {
+      "b": "P",
+      "kind": "stairs",
+      "coord": [
+        126.92690987,
+        37.55118534
+      ],
+      "estimated": true
+    },
+    {
+      "b": "P",
+      "kind": "stairs",
+      "coord": [
+        126.92682739,
+        37.55100045
+      ],
+      "estimated": true
+    },
+    {
+      "b": "P",
+      "kind": "stairs",
+      "coord": [
+        126.92676329,
+        37.55095041
+      ],
+      "estimated": true
+    },
+    {
+      "b": "P",
+      "kind": "toilet",
+      "coord": [
+        126.92694472,
+        37.55125092
+      ],
+      "estimated": true
+    },
+    {
+      "b": "P",
+      "kind": "cafe",
+      "coord": [
+        126.92688256,
+        37.55112869
+      ],
+      "estimated": true
+    },
+    {
+      "b": "L",
+      "kind": "stairs",
+      "coord": [
+        126.92647224,
+        37.55172315
+      ],
+      "estimated": true
+    },
+    {
+      "b": "L",
+      "kind": "stairs",
+      "coord": [
+        126.92648189,
+        37.55157382
+      ],
+      "estimated": true
+    },
+    {
+      "b": "L",
+      "kind": "elevator",
+      "coord": [
+        126.92649817,
+        37.55164233
+      ],
+      "estimated": true
+    },
+    {
+      "b": "L",
+      "kind": "toilet",
+      "coord": [
+        126.92650698,
+        37.55178574
+      ],
+      "estimated": true
+    },
+    {
+      "b": "L",
+      "kind": "cafe",
+      "coord": [
+        126.92665328,
+        37.55164158
+      ],
+      "estimated": true
+    },
+    {
+      "b": "H",
+      "kind": "stairs",
+      "coord": [
+        126.92660659,
+        37.5512064
+      ],
+      "estimated": true
+    },
+    {
+      "b": "H",
+      "kind": "toilet",
+      "coord": [
+        126.92669661,
+        37.55140022
+      ],
+      "estimated": true
+    },
+    {
+      "b": "H",
+      "kind": "cafe",
+      "coord": [
+        126.92646203,
+        37.55139837
+      ],
+      "estimated": true
+    },
+    {
+      "b": "H",
+      "kind": "study",
+      "coord": [
+        126.92657567,
+        37.55114976
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Q",
+      "kind": "stairs",
+      "coord": [
+        126.92644731,
+        37.55116437
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Q",
+      "kind": "stairs",
+      "coord": [
+        126.92636992,
+        37.55088374
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Q",
+      "kind": "elevator",
+      "coord": [
+        126.92650245,
+        37.55088875
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Q",
+      "kind": "elevator",
+      "coord": [
+        126.92644807,
+        37.5508609
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Q",
+      "kind": "toilet",
+      "coord": [
+        126.9265654,
+        37.5508266
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Q",
+      "kind": "smoking",
+      "coord": [
+        126.9265037,
+        37.55112186
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Q",
+      "kind": "lounge",
+      "coord": [
+        126.92636114,
+        37.55117037
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Q",
+      "kind": "study",
+      "coord": [
+        126.92637035,
+        37.55088362
+      ],
+      "estimated": true
+    },
+    {
+      "b": "G",
+      "kind": "stairs",
+      "coord": [
+        126.92628161,
+        37.55155583
+      ],
+      "estimated": true
+    },
+    {
+      "b": "G",
+      "kind": "stairs",
+      "coord": [
+        126.92616,
+        37.55129461
+      ],
+      "estimated": true
+    },
+    {
+      "b": "G",
+      "kind": "toilet",
+      "coord": [
+        126.9264316,
+        37.5515742
+      ],
+      "estimated": true
+    },
+    {
+      "b": "G",
+      "kind": "printer",
+      "coord": [
+        126.9264316,
+        37.5515742
+      ],
+      "estimated": true
+    },
+    {
+      "b": "G",
+      "kind": "lounge",
+      "coord": [
+        126.92621901,
+        37.55142135
+      ],
+      "estimated": true
+    },
+    {
+      "b": "G",
+      "kind": "study",
+      "coord": [
+        126.9263395,
+        37.55139309
+      ],
+      "estimated": true
+    },
+    {
+      "b": "G",
+      "kind": "study",
+      "coord": [
+        126.92619025,
+        37.55135958
+      ],
+      "estimated": true
+    },
+    {
+      "b": "K",
+      "kind": "stairs",
+      "coord": [
+        126.92641799,
+        37.55201701
+      ],
+      "estimated": true
+    },
+    {
+      "b": "K",
+      "kind": "stairs",
+      "coord": [
+        126.92578181,
+        37.55238173
+      ],
+      "estimated": true
+    },
+    {
+      "b": "K",
+      "kind": "stairs",
+      "coord": [
+        126.92568352,
+        37.55245693
+      ],
+      "estimated": true
+    },
+    {
+      "b": "K",
+      "kind": "elevator",
+      "coord": [
+        126.92649274,
+        37.55208837
+      ],
+      "estimated": true
+    },
+    {
+      "b": "K",
+      "kind": "toilet",
+      "coord": [
+        126.92622423,
+        37.55224509
+      ],
+      "estimated": true
+    },
+    {
+      "b": "K",
+      "kind": "printer",
+      "coord": [
+        126.92584566,
+        37.55235154
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "stairs",
+      "coord": [
+        126.9251878,
+        37.5522939
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "stairs",
+      "coord": [
+        126.92511798,
+        37.55234236
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "stairs",
+      "coord": [
+        126.9249961,
+        37.55242694
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "stairs",
+      "coord": [
+        126.92486053,
+        37.55254201
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "toilet",
+      "coord": [
+        126.9251274,
+        37.55233582
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "toilet",
+      "coord": [
+        126.92468755,
+        37.55234859
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "cafe",
+      "coord": [
+        126.92524803,
+        37.55258197
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "cafe",
+      "coord": [
+        126.92518443,
+        37.55229624
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "cafe",
+      "coord": [
+        126.92461996,
+        37.55247444
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "food",
+      "coord": [
+        126.92485818,
+        37.55246195
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "printer",
+      "coord": [
+        126.92505063,
+        37.5523891
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "study",
+      "coord": [
+        126.92520246,
+        37.55251943
+      ],
+      "estimated": true
+    },
+    {
+      "b": "R",
+      "kind": "study",
+      "coord": [
+        126.92480165,
+        37.55265528
+      ],
+      "estimated": true
+    },
+    {
+      "b": "M",
+      "kind": "stairs",
+      "coord": [
+        126.92427236,
+        37.55175851
+      ],
+      "estimated": true
+    },
+    {
+      "b": "M",
+      "kind": "elevator",
+      "coord": [
+        126.92434136,
+        37.55206899
+      ],
+      "estimated": true
+    },
+    {
+      "b": "M",
+      "kind": "toilet",
+      "coord": [
+        126.92442801,
+        37.55216968
+      ],
+      "estimated": true
+    },
+    {
+      "b": "M",
+      "kind": "toilet",
+      "coord": [
+        126.92436809,
+        37.55212992
+      ],
+      "estimated": true
+    },
+    {
+      "b": "M",
+      "kind": "toilet",
+      "coord": [
+        126.92430328,
+        37.55181514
+      ],
+      "estimated": true
+    },
+    {
+      "b": "M",
+      "kind": "toilet",
+      "coord": [
+        126.92448719,
+        37.55161401
+      ],
+      "estimated": true
+    },
+    {
+      "b": "M",
+      "kind": "cafe",
+      "coord": [
+        126.9244192,
+        37.5521723
+      ],
+      "estimated": true
+    },
+    {
+      "b": "M",
+      "kind": "smoking",
+      "coord": [
+        126.9248109,
+        37.5520557
+      ],
+      "estimated": true
+    },
+    {
+      "b": "F",
+      "kind": "stairs",
+      "coord": [
+        126.92629902,
+        37.55079479
+      ],
+      "estimated": true
+    },
+    {
+      "b": "F",
+      "kind": "stairs",
+      "coord": [
+        126.9261872,
+        37.55079534
+      ],
+      "estimated": true
+    },
+    {
+      "b": "F",
+      "kind": "stairs",
+      "coord": [
+        126.92612505,
+        37.5507975
+      ],
+      "estimated": true
+    },
+    {
+      "b": "F",
+      "kind": "stairs",
+      "coord": [
+        126.92640282,
+        37.5505723
+      ],
+      "estimated": true
+    },
+    {
+      "b": "F",
+      "kind": "toilet",
+      "coord": [
+        126.9263712,
+        37.5508054
+      ],
+      "estimated": true
+    },
+    {
+      "b": "U",
+      "kind": "stairs",
+      "coord": [
+        126.92656699,
+        37.55029916
+      ],
+      "estimated": true
+    },
+    {
+      "b": "U",
+      "kind": "stairs",
+      "coord": [
+        126.92647964,
+        37.55028072
+      ],
+      "estimated": true
+    },
+    {
+      "b": "U",
+      "kind": "elevator",
+      "coord": [
+        126.92644943,
+        37.55027212
+      ],
+      "estimated": true
+    },
+    {
+      "b": "U",
+      "kind": "toilet",
+      "coord": [
+        126.92656589,
+        37.55027133
+      ],
+      "estimated": true
+    },
+    {
+      "b": "U",
+      "kind": "smoking",
+      "coord": [
+        126.9264511,
+        37.5503031
+      ],
+      "estimated": true
+    },
+    {
+      "b": "E",
+      "kind": "stairs",
+      "coord": [
+        126.92606292,
+        37.55038743
+      ],
+      "estimated": true
+    },
+    {
+      "b": "E",
+      "kind": "elevator",
+      "coord": [
+        126.92606509,
+        37.55044719
+      ],
+      "estimated": true
+    },
+    {
+      "b": "E",
+      "kind": "toilet",
+      "coord": [
+        126.92606053,
+        37.55032169
+      ],
+      "estimated": true
+    },
+    {
+      "b": "MH",
+      "kind": "stairs",
+      "coord": [
+        126.9260639,
+        37.5507856
+      ],
+      "estimated": true
+    },
+    {
+      "b": "MH",
+      "kind": "elevator",
+      "coord": [
+        126.92606828,
+        37.55078183
+      ],
+      "estimated": true
+    },
+    {
+      "b": "MH",
+      "kind": "toilet",
+      "coord": [
+        126.92600814,
+        37.55090079
+      ],
+      "estimated": true
+    },
+    {
+      "b": "MH",
+      "kind": "printer",
+      "coord": [
+        126.9260104,
+        37.5509422
+      ],
+      "estimated": true
+    },
+    {
+      "b": "B",
+      "kind": "stairs",
+      "coord": [
+        126.92589213,
+        37.55004192
+      ],
+      "estimated": true
+    },
+    {
+      "b": "B",
+      "kind": "elevator",
+      "coord": [
+        126.92589146,
+        37.55012262
+      ],
+      "estimated": true
+    },
+    {
+      "b": "B",
+      "kind": "toilet",
+      "coord": [
+        126.92614158,
+        37.55005565
+      ],
+      "estimated": true
+    },
+    {
+      "b": "B",
+      "kind": "printer",
+      "coord": [
+        126.92614152,
+        37.55006671
+      ],
+      "estimated": true
+    },
+    {
+      "b": "A",
+      "kind": "stairs",
+      "coord": [
+        126.92589364,
+        37.54973929
+      ],
+      "estimated": true
+    },
+    {
+      "b": "A",
+      "kind": "stairs",
+      "coord": [
+        126.925889,
+        37.54951218
+      ],
+      "estimated": true
+    },
+    {
+      "b": "A",
+      "kind": "cafe",
+      "coord": [
+        126.92578164,
+        37.54973669
+      ],
+      "estimated": true
+    },
+    {
+      "b": "A",
+      "kind": "smoking",
+      "coord": [
+        126.92588401,
+        37.54937472
+      ],
+      "estimated": true
+    },
+    {
+      "b": "C",
+      "kind": "stairs",
+      "coord": [
+        126.92613947,
+        37.54968687
+      ],
+      "estimated": true
+    },
+    {
+      "b": "C",
+      "kind": "stairs",
+      "coord": [
+        126.92600152,
+        37.54939134
+      ],
+      "estimated": true
+    },
+    {
+      "b": "C",
+      "kind": "stairs",
+      "coord": [
+        126.92602964,
+        37.54907568
+      ],
+      "estimated": true
+    },
+    {
+      "b": "C",
+      "kind": "stairs",
+      "coord": [
+        126.92578103,
+        37.54908083
+      ],
+      "estimated": true
+    },
+    {
+      "b": "C",
+      "kind": "elevator",
+      "coord": [
+        126.92605751,
+        37.54961554
+      ],
+      "estimated": true
+    },
+    {
+      "b": "C",
+      "kind": "toilet",
+      "coord": [
+        126.92604554,
+        37.54938547
+      ],
+      "estimated": true
+    },
+    {
+      "b": "C",
+      "kind": "toilet",
+      "coord": [
+        126.92587818,
+        37.54907869
+      ],
+      "estimated": true
+    },
+    {
+      "b": "C",
+      "kind": "cafe",
+      "coord": [
+        126.926131,
+        37.54907341
+      ],
+      "estimated": true
+    },
+    {
+      "b": "C",
+      "kind": "printer",
+      "coord": [
+        126.9260513,
+        37.54954384
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D",
+      "kind": "stairs",
+      "coord": [
+        126.92628253,
+        37.5489702
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D",
+      "kind": "stairs",
+      "coord": [
+        126.92607855,
+        37.54901602
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D",
+      "kind": "elevator",
+      "coord": [
+        126.9261671,
+        37.54897076
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D",
+      "kind": "toilet",
+      "coord": [
+        126.92600979,
+        37.54901038
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D",
+      "kind": "lounge",
+      "coord": [
+        126.92583654,
+        37.54900823
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D",
+      "kind": "smoking",
+      "coord": [
+        126.92609545,
+        37.54905157
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z1",
+      "kind": "stairs",
+      "coord": [
+        126.9255836,
+        37.55076713
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z1",
+      "kind": "stairs",
+      "coord": [
+        126.92550271,
+        37.55018881
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z1",
+      "kind": "toilet",
+      "coord": [
+        126.92550233,
+        37.55022572
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z1",
+      "kind": "smoking",
+      "coord": [
+        126.92557002,
+        37.55037931
+      ],
+      "estimated": true
+    },
+    {
+      "b": "S",
+      "kind": "stairs",
+      "coord": [
+        126.92523623,
+        37.55046833
+      ],
+      "estimated": true
+    },
+    {
+      "b": "S",
+      "kind": "toilet",
+      "coord": [
+        126.92523406,
+        37.55040857
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z2",
+      "kind": "stairs",
+      "coord": [
+        126.92522757,
+        37.55003465
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z2",
+      "kind": "stairs",
+      "coord": [
+        126.92533233,
+        37.54944239
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z2",
+      "kind": "toilet",
+      "coord": [
+        126.92525165,
+        37.54990304
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z3",
+      "kind": "stairs",
+      "coord": [
+        126.9249446,
+        37.5499824
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z3",
+      "kind": "stairs",
+      "coord": [
+        126.9249104,
+        37.5499219
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z3",
+      "kind": "stairs",
+      "coord": [
+        126.92467489,
+        37.54989304
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z3",
+      "kind": "stairs",
+      "coord": [
+        126.9244672,
+        37.54989076
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z3",
+      "kind": "toilet",
+      "coord": [
+        126.92455082,
+        37.54990829
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z3",
+      "kind": "study",
+      "coord": [
+        126.92476775,
+        37.55000548
+      ],
+      "estimated": true
+    },
+    {
+      "b": "T",
+      "kind": "stairs",
+      "coord": [
+        126.92486817,
+        37.55022969
+      ],
+      "estimated": true
+    },
+    {
+      "b": "T",
+      "kind": "stairs",
+      "coord": [
+        126.92431329,
+        37.5500151
+      ],
+      "estimated": true
+    },
+    {
+      "b": "T",
+      "kind": "toilet",
+      "coord": [
+        126.92471971,
+        37.55021176
+      ],
+      "estimated": true
+    },
+    {
+      "b": "T",
+      "kind": "smoking",
+      "coord": [
+        126.9249373,
+        37.5500905
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D2",
+      "kind": "stairs",
+      "coord": [
+        126.92496596,
+        37.54953947
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D2",
+      "kind": "stairs",
+      "coord": [
+        126.92487648,
+        37.54953567
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D2",
+      "kind": "stairs",
+      "coord": [
+        126.92455659,
+        37.54936165
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D2",
+      "kind": "elevator",
+      "coord": [
+        126.92508793,
+        37.54936603
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D2",
+      "kind": "elevator",
+      "coord": [
+        126.92453458,
+        37.54958922
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D2",
+      "kind": "toilet",
+      "coord": [
+        126.92465238,
+        37.54944835
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D2",
+      "kind": "food",
+      "coord": [
+        126.92513284,
+        37.54956443
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D2",
+      "kind": "food",
+      "coord": [
+        126.92489335,
+        37.54953756
+      ],
+      "estimated": true
+    },
+    {
+      "b": "D2",
+      "kind": "cafe",
+      "coord": [
+        126.92496988,
+        37.54954615
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z4",
+      "kind": "stairs",
+      "coord": [
+        126.92477079,
+        37.55073956
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z4",
+      "kind": "stairs",
+      "coord": [
+        126.92438111,
+        37.55058107
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z4",
+      "kind": "stairs",
+      "coord": [
+        126.9243484,
+        37.5502024
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z4",
+      "kind": "elevator",
+      "coord": [
+        126.92436964,
+        37.55044823
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z4",
+      "kind": "toilet",
+      "coord": [
+        126.92436906,
+        37.55044152
+      ],
+      "estimated": true
+    },
+    {
+      "b": "Z4",
+      "kind": "smoking",
+      "coord": [
+        126.92436994,
+        37.55045168
+      ],
+      "estimated": true
+    },
+    {
+      "b": "ART",
+      "kind": "stairs",
+      "coord": [
+        126.92426587,
+        37.55218268
+      ],
+      "estimated": true
+    }
+  ],
+  "entrances": [
+    {
+      "b": "I",
+      "floor": "1",
+      "coord": [
+        126.92718042,
+        37.55136686
+      ],
+      "closed": false
+    },
+    {
+      "b": "I",
+      "floor": "1",
+      "coord": [
+        126.92717817,
+        37.55157254
+      ],
+      "closed": false
+    },
+    {
+      "b": "I",
+      "floor": "6",
+      "coord": [
+        126.9272408,
+        37.55133343
+      ],
+      "closed": false
+    },
+    {
+      "b": "P",
+      "floor": "7",
+      "coord": [
+        126.92712331,
+        37.55127052
+      ],
+      "closed": false
+    },
+    {
+      "b": "P",
+      "floor": "3",
+      "coord": [
+        126.92709492,
+        37.5512037
+      ],
+      "closed": false
+    },
+    {
+      "b": "P",
+      "floor": "5",
+      "coord": [
+        126.9270544,
+        37.5513403
+      ],
+      "closed": false
+    },
+    {
+      "b": "P",
+      "floor": "6",
+      "coord": [
+        126.9270402,
+        37.5513134
+      ],
+      "closed": false
+    },
+    {
+      "b": "P",
+      "floor": "4",
+      "coord": [
+        126.92697434,
+        37.55136302
+      ],
+      "closed": false
+    },
+    {
+      "b": "P",
+      "floor": "5",
+      "coord": [
+        126.92694662,
+        37.55132975
+      ],
+      "closed": false
+    },
+    {
+      "b": "P",
+      "floor": "1",
+      "coord": [
+        126.92692183,
+        37.55124817
+      ],
+      "closed": false
+    },
+    {
+      "b": "P",
+      "floor": "1",
+      "coord": [
+        126.92686426,
+        37.55112221
+      ],
+      "closed": false
+    },
+    {
+      "b": "P",
+      "floor": "B2",
+      "coord": [
+        126.92682188,
+        37.55102947
+      ],
+      "closed": false
+    },
+    {
+      "b": "J",
+      "floor": "3",
+      "coord": [
+        126.92719071,
+        37.5516921
+      ],
+      "closed": false
+    },
+    {
+      "b": "J",
+      "floor": "2",
+      "coord": [
+        126.92708899,
+        37.55165179
+      ],
+      "closed": false
+    },
+    {
+      "b": "J",
+      "floor": "1",
+      "coord": [
+        126.92699324,
+        37.55171166
+      ],
+      "closed": false
+    },
+    {
+      "b": "J",
+      "floor": "7",
+      "coord": [
+        126.92705156,
+        37.55157171
+      ],
+      "closed": false
+    },
+    {
+      "b": "J",
+      "floor": "6",
+      "coord": [
+        126.92695949,
+        37.55165927
+      ],
+      "closed": false
+    },
+    {
+      "b": "L",
+      "floor": "4",
+      "coord": [
+        126.92659352,
+        37.55178234
+      ],
+      "closed": false
+    },
+    {
+      "b": "L",
+      "floor": "4",
+      "coord": [
+        126.9266973,
+        37.55164143
+      ],
+      "closed": false
+    },
+    {
+      "b": "L",
+      "floor": "1",
+      "coord": [
+        126.92638299,
+        37.55169261
+      ],
+      "closed": false
+    },
+    {
+      "b": "H",
+      "floor": "1",
+      "coord": [
+        126.9266052,
+        37.5512853
+      ],
+      "closed": false
+    },
+    {
+      "b": "H",
+      "floor": "3",
+      "coord": [
+        126.9265954,
+        37.55128821
+      ],
+      "closed": false
+    },
+    {
+      "b": "H",
+      "floor": "5",
+      "coord": [
+        126.92661813,
+        37.55103903
+      ],
+      "closed": false
+    },
+    {
+      "b": "Q",
+      "floor": "7",
+      "coord": [
+        126.9266643,
+        37.5509557
+      ],
+      "closed": false
+    },
+    {
+      "b": "Q",
+      "floor": "4",
+      "coord": [
+        126.92656761,
+        37.55083186
+      ],
+      "closed": false
+    },
+    {
+      "b": "Q",
+      "floor": "3",
+      "coord": [
+        126.92655469,
+        37.551047
+      ],
+      "closed": false
+    },
+    {
+      "b": "Q",
+      "floor": "3",
+      "coord": [
+        126.92653135,
+        37.55083655
+      ],
+      "closed": false
+    },
+    {
+      "b": "Q",
+      "floor": "2",
+      "coord": [
+        126.92636686,
+        37.55088464
+      ],
+      "closed": false
+    },
+    {
+      "b": "Q",
+      "floor": "1",
+      "coord": [
+        126.9264867,
+        37.5510669
+      ],
+      "closed": false
+    },
+    {
+      "b": "Q",
+      "floor": "1",
+      "coord": [
+        126.92627928,
+        37.55091024
+      ],
+      "closed": false
+    },
+    {
+      "b": "Q",
+      "floor": "B1",
+      "coord": [
+        126.92626221,
+        37.55091523
+      ],
+      "closed": false
+    },
+    {
+      "b": "G",
+      "floor": "2",
+      "coord": [
+        126.9264316,
+        37.5515742
+      ],
+      "closed": false
+    },
+    {
+      "b": "G",
+      "floor": "1",
+      "coord": [
+        126.92630739,
+        37.55161052
+      ],
+      "closed": false
+    },
+    {
+      "b": "G",
+      "floor": "1",
+      "coord": [
+        126.92625627,
+        37.55150139
+      ],
+      "closed": false
+    },
+    {
+      "b": "G",
+      "floor": "B1",
+      "coord": [
+        126.9262502,
+        37.55148835
+      ],
+      "closed": false
+    },
+    {
+      "b": "F",
+      "floor": "5",
+      "coord": [
+        126.92647911,
+        37.5507864
+      ],
+      "closed": false
+    },
+    {
+      "b": "F",
+      "floor": "4",
+      "coord": [
+        126.92633533,
+        37.55080677
+      ],
+      "closed": false
+    },
+    {
+      "b": "F",
+      "floor": "4",
+      "coord": [
+        126.9262619,
+        37.5507789
+      ],
+      "closed": false
+    },
+    {
+      "b": "F",
+      "floor": "3",
+      "coord": [
+        126.926223,
+        37.5507804
+      ],
+      "closed": false
+    },
+    {
+      "b": "F",
+      "floor": "2",
+      "coord": [
+        126.9261269,
+        37.5508285
+      ],
+      "closed": false
+    },
+    {
+      "b": "F",
+      "floor": "2",
+      "coord": [
+        126.9261265,
+        37.55082184
+      ],
+      "closed": false
+    },
+    {
+      "b": "U",
+      "floor": "2",
+      "coord": [
+        126.92655508,
+        37.55011922
+      ],
+      "closed": false
+    },
+    {
+      "b": "U",
+      "floor": "2",
+      "coord": [
+        126.9264511,
+        37.5503031
+      ],
+      "closed": false
+    },
+    {
+      "b": "U",
+      "floor": "B2",
+      "coord": [
+        126.92636604,
+        37.55019504
+      ],
+      "closed": false
+    },
+    {
+      "b": "E",
+      "floor": "3",
+      "coord": [
+        126.92624133,
+        37.5504631
+      ],
+      "closed": false
+    },
+    {
+      "b": "E",
+      "floor": "2",
+      "coord": [
+        126.92601421,
+        37.55019136
+      ],
+      "closed": false
+    },
+    {
+      "b": "E",
+      "floor": "1",
+      "coord": [
+        126.92601666,
+        37.55024334
+      ],
+      "closed": false
+    },
+    {
+      "b": "MH",
+      "floor": "4",
+      "coord": [
+        126.92600753,
+        37.5508898
+      ],
+      "closed": false
+    },
+    {
+      "b": "MH",
+      "floor": "8",
+      "coord": [
+        126.92600362,
+        37.55081816
+      ],
+      "closed": false
+    },
+    {
+      "b": "MH",
+      "floor": "1",
+      "coord": [
+        126.92586051,
+        37.55085763
+      ],
+      "closed": false
+    },
+    {
+      "b": "MH",
+      "floor": "B1",
+      "coord": [
+        126.9260104,
+        37.5509422
+      ],
+      "closed": false
+    },
+    {
+      "b": "MH",
+      "floor": "6",
+      "coord": [
+        126.9260999,
+        37.5507546
+      ],
+      "closed": false
+    },
+    {
+      "b": "B",
+      "floor": "1",
+      "coord": [
+        126.92606256,
+        37.5500702
+      ],
+      "closed": false
+    },
+    {
+      "b": "B",
+      "floor": "1",
+      "coord": [
+        126.92596225,
+        37.54998769
+      ],
+      "closed": false
+    },
+    {
+      "b": "A",
+      "floor": "2",
+      "coord": [
+        126.92592976,
+        37.54981123
+      ],
+      "closed": false
+    },
+    {
+      "b": "A",
+      "floor": "1",
+      "coord": [
+        126.92577369,
+        37.54944507
+      ],
+      "closed": false
+    },
+    {
+      "b": "C",
+      "floor": "3",
+      "coord": [
+        126.92601961,
+        37.54971892
+      ],
+      "closed": false
+    },
+    {
+      "b": "C",
+      "floor": "3",
+      "coord": [
+        126.92600251,
+        37.54945137
+      ],
+      "closed": false
+    },
+    {
+      "b": "C",
+      "floor": "2",
+      "coord": [
+        126.92591784,
+        37.54935523
+      ],
+      "closed": false
+    },
+    {
+      "b": "C",
+      "floor": "R",
+      "coord": [
+        126.92579508,
+        37.54923704
+      ],
+      "closed": false
+    },
+    {
+      "b": "C",
+      "floor": "3",
+      "coord": [
+        126.92599105,
+        37.54907645
+      ],
+      "closed": false
+    },
+    {
+      "b": "C",
+      "floor": "1",
+      "coord": [
+        126.92569529,
+        37.5490854
+      ],
+      "closed": false
+    },
+    {
+      "b": "C",
+      "floor": "3",
+      "coord": [
+        126.92612701,
+        37.54907354
+      ],
+      "closed": false
+    },
+    {
+      "b": "C",
+      "floor": "6",
+      "coord": [
+        126.92623597,
+        37.54907014
+      ],
+      "closed": true
+    },
+    {
+      "b": "D",
+      "floor": "2",
+      "coord": [
+        126.92593186,
+        37.5490543
+      ],
+      "closed": false
+    },
+    {
+      "b": "D",
+      "floor": "1",
+      "coord": [
+        126.92592653,
+        37.54893367
+      ],
+      "closed": false
+    },
+    {
+      "b": "K",
+      "floor": "4",
+      "coord": [
+        126.9265417,
+        37.55190992
+      ],
+      "closed": false
+    },
+    {
+      "b": "K",
+      "floor": "1",
+      "coord": [
+        126.92637602,
+        37.55197749
+      ],
+      "closed": false
+    },
+    {
+      "b": "K",
+      "floor": "1",
+      "coord": [
+        126.92574088,
+        37.55233306
+      ],
+      "closed": false
+    },
+    {
+      "b": "R",
+      "floor": "3",
+      "coord": [
+        126.9253712,
+        37.5524699
+      ],
+      "closed": false
+    },
+    {
+      "b": "R",
+      "floor": "2",
+      "coord": [
+        126.9251878,
+        37.5522939
+      ],
+      "closed": false
+    },
+    {
+      "b": "R",
+      "floor": "2",
+      "coord": [
+        126.92479718,
+        37.55240942
+      ],
+      "closed": false
+    },
+    {
+      "b": "R",
+      "floor": "1",
+      "coord": [
+        126.9247687,
+        37.5523838
+      ],
+      "closed": false
+    },
+    {
+      "b": "R",
+      "floor": "L",
+      "coord": [
+        126.92467646,
+        37.55254804
+      ],
+      "closed": false
+    },
+    {
+      "b": "R",
+      "floor": "L",
+      "coord": [
+        126.9246352,
+        37.55250415
+      ],
+      "closed": false
+    },
+    {
+      "b": "M",
+      "floor": "B2",
+      "coord": [
+        126.92473809,
+        37.55207738
+      ],
+      "closed": false
+    },
+    {
+      "b": "M",
+      "floor": "1",
+      "coord": [
+        126.92467209,
+        37.55209704
+      ],
+      "closed": false
+    },
+    {
+      "b": "M",
+      "floor": "B1",
+      "coord": [
+        126.92470197,
+        37.55208814
+      ],
+      "closed": false
+    },
+    {
+      "b": "M",
+      "floor": "1",
+      "coord": [
+        126.92450262,
+        37.55214749
+      ],
+      "closed": false
+    },
+    {
+      "b": "M",
+      "floor": "1",
+      "coord": [
+        126.92447031,
+        37.5521571
+      ],
+      "closed": false
+    },
+    {
+      "b": "M",
+      "floor": "B2",
+      "coord": [
+        126.9244192,
+        37.5521723
+      ],
+      "closed": false
+    },
+    {
+      "b": "M",
+      "floor": "B1",
+      "coord": [
+        126.9244192,
+        37.5521723
+      ],
+      "closed": false
+    },
+    {
+      "b": "M",
+      "floor": "B1",
+      "coord": [
+        126.9242509,
+        37.5520152
+      ],
+      "closed": false
+    },
+    {
+      "b": "M",
+      "floor": "B1",
+      "coord": [
+        126.9245906,
+        37.5516245
+      ],
+      "closed": false
+    },
+    {
+      "b": "M",
+      "floor": "1",
+      "coord": [
+        126.9243084,
+        37.55165231
+      ],
+      "closed": false
+    },
+    {
+      "b": "M",
+      "floor": "B2",
+      "coord": [
+        126.92422168,
+        37.55179389
+      ],
+      "closed": false
+    },
+    {
+      "b": "ART",
+      "floor": "R",
+      "coord": [
+        126.9241779,
+        37.5522076
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z1",
+      "floor": "2",
+      "coord": [
+        126.92558142,
+        37.55070486
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z1",
+      "floor": "1",
+      "coord": [
+        126.92545161,
+        37.55070658
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z1",
+      "floor": "1",
+      "coord": [
+        126.92543473,
+        37.55022428
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z1",
+      "floor": "2",
+      "coord": [
+        126.92550478,
+        37.55018876
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z1",
+      "floor": "1",
+      "coord": [
+        126.9254335,
+        37.5501903
+      ],
+      "closed": false
+    },
+    {
+      "b": "S",
+      "floor": "1",
+      "coord": [
+        126.92514629,
+        37.5504944
+      ],
+      "closed": false
+    },
+    {
+      "b": "S",
+      "floor": "3",
+      "coord": [
+        126.92530499,
+        37.55018814
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z2",
+      "floor": "2",
+      "coord": [
+        126.9253502,
+        37.5500667
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z2",
+      "floor": "4",
+      "coord": [
+        126.92526199,
+        37.55005451
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z2",
+      "floor": "5",
+      "coord": [
+        126.9253659,
+        37.54998193
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z2",
+      "floor": "R",
+      "coord": [
+        126.92537434,
+        37.54984579
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z2",
+      "floor": "1",
+      "coord": [
+        126.92518078,
+        37.54993039
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z2",
+      "floor": "2",
+      "coord": [
+        126.92544222,
+        37.54943734
+      ],
+      "closed": false
+    },
+    {
+      "b": "T",
+      "floor": "3",
+      "coord": [
+        126.9249096,
+        37.5502347
+      ],
+      "closed": false
+    },
+    {
+      "b": "T",
+      "floor": "5",
+      "coord": [
+        126.92492466,
+        37.55015606
+      ],
+      "closed": false
+    },
+    {
+      "b": "T",
+      "floor": "1",
+      "coord": [
+        126.92441474,
+        37.55017492
+      ],
+      "closed": false
+    },
+    {
+      "b": "T",
+      "floor": "1",
+      "coord": [
+        126.92442618,
+        37.55002874
+      ],
+      "closed": false
+    },
+    {
+      "b": "T",
+      "floor": "B1",
+      "coord": [
+        126.924305,
+        37.5500141
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z3",
+      "floor": "3",
+      "coord": [
+        126.92494457,
+        37.54998255
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z3",
+      "floor": "3",
+      "coord": [
+        126.92494273,
+        37.54999199
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z3",
+      "floor": "1",
+      "coord": [
+        126.92492783,
+        37.54998035
+      ],
+      "closed": false
+    },
+    {
+      "b": "D2",
+      "floor": "1",
+      "coord": [
+        126.92524554,
+        37.54933602
+      ],
+      "closed": false
+    },
+    {
+      "b": "D2",
+      "floor": "B1",
+      "coord": [
+        126.92511032,
+        37.54956191
+      ],
+      "closed": false
+    },
+    {
+      "b": "D2",
+      "floor": "B1",
+      "coord": [
+        126.92506022,
+        37.54937131
+      ],
+      "closed": false
+    },
+    {
+      "b": "D2",
+      "floor": "1",
+      "coord": [
+        126.92474831,
+        37.54952129
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z4",
+      "floor": "1",
+      "coord": [
+        126.92467524,
+        37.55074502
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z4",
+      "floor": "1",
+      "coord": [
+        126.9244943,
+        37.55050663
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z4",
+      "floor": "1",
+      "coord": [
+        126.92438432,
+        37.55061812
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z4",
+      "floor": "1",
+      "coord": [
+        126.92437313,
+        37.5504886
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z4",
+      "floor": "1",
+      "coord": [
+        126.92435768,
+        37.55030979
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z4",
+      "floor": "1",
+      "coord": [
+        126.9243484,
+        37.5502024
+      ],
+      "closed": false
+    },
+    {
+      "b": "Z4",
+      "floor": "1",
+      "coord": [
+        126.9243484,
+        37.5502024
+      ],
+      "closed": false
+    },
+    {
+      "b": "G",
+      "floor": "4",
+      "coord": [
+        126.9264316,
+        37.5515742
+      ],
+      "closed": false
+    },
+    {
+      "b": "G",
+      "floor": "6",
+      "coord": [
+        126.9264316,
+        37.5515742
+      ],
+      "closed": false
+    }
+  ],
+  "links": [
+    {
+      "id": "guide-f-u-4-2",
+      "stops": [
+        "F",
+        "U"
+      ],
+      "floors": [
+        "4",
+        "2"
+      ],
+      "match": [
+        "f-u"
+      ]
+    },
+    {
+      "id": "guide-f-u-3-b2",
+      "stops": [
+        "F",
+        "U"
+      ],
+      "floors": [
+        "3",
+        "B2"
+      ],
+      "match": [
+        "f-u"
+      ]
+    },
+    {
+      "id": "guide-f-e-2-3",
+      "stops": [
+        "F",
+        "E"
+      ],
+      "floors": [
+        "2",
+        "3"
+      ],
+      "match": [
+        "f-e-2-3"
+      ]
+    },
+    {
+      "id": "guide-e-b-2-1",
+      "stops": [
+        "E",
+        "B"
+      ],
+      "floors": [
+        "2",
+        "1"
+      ],
+      "match": []
+    },
+    {
+      "id": "guide-b-c-1-3",
+      "stops": [
+        "B",
+        "C"
+      ],
+      "floors": [
+        "1",
+        "3"
+      ],
+      "match": [
+        "b-c-1-3",
+        "b-c-corridor"
+      ]
+    },
+    {
+      "id": "guide-c-d-3-2",
+      "stops": [
+        "C",
+        "D"
+      ],
+      "floors": [
+        "3",
+        "2"
+      ],
+      "match": [
+        "c-d"
+      ]
+    },
+    {
+      "id": "guide-z2-roof",
+      "stops": [
+        "Z2",
+        "Z2"
+      ],
+      "floors": [
+        "5",
+        "R"
+      ],
+      "match": []
+    },
+    {
+      "id": "guide-m-art-roof",
+      "stops": [
+        "M",
+        "ART"
+      ],
+      "floors": [
+        "1",
+        ""
+      ],
+      "match": [],
+      "via": "옥상 경유"
+    },
+    {
+      "id": "guide-z3-d2-b1",
+      "stops": [
+        "Z3",
+        "D2"
+      ],
+      "floors": [
+        "1",
+        "B1"
+      ],
+      "match": []
+    }
+  ]
+}

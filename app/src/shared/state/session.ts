@@ -3,7 +3,7 @@ let user: string | null = null;
 type SessionChange = 'change' | 'restore';
 const listeners = new Set<(reason: SessionChange) => void>();
 
-export class StaleSessionError extends Error {
+class StaleSessionError extends Error {
   constructor() {
     super('이전 로그인에서 시작한 요청이에요.');
   }

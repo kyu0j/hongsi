@@ -4,9 +4,8 @@ import { isCurrentSession, onSessionChange, readUserData, removeUserData, sessio
 import { app, handleAuthError } from '../auth/auth-state.svelte';
 import { errorText } from '../../shared/api/net.svelte';
 import { normalizeCalendar } from './calendar-data';
-import { resolveSemesterDisplay } from './semester';
 import { todos } from './todo-resource.svelte';
-import type { CalendarData, CalendarItem, CalendarState, SemesterDisplay } from '../../shared/types';
+import type { CalendarData, CalendarItem, CalendarState, SemesterDisplay, SubmissionView } from '../../shared/types';
 
 const MIN = 60_000;
 type Cached = { data: CalendarData; at: number };
@@ -19,7 +18,9 @@ let schoolReadRevision = 0;
 let todosReadRevision = 0;
 const schoolRefresh = new Set<SemesterDisplay>();
 const stateChanges = new Map<string, { revision: number; patch: ItemPatch }>();
-const pending = new Map<SemesterDisplay, { job: Promise<CalendarData>; controller: AbortController }>();
+const pending = new Map<SemesterDisplay, { job: Promise<CalendarData>; controller: AbortController; refresh: boolean }>();
+const submissionReads = new Map<number, Promise<SubmissionView>>();
+const submissionChanges = new Map<string, { status: SubmissionView['info']['status']; fetchedAt: number; revision: number }>();
 const memory = new Map<SemesterDisplay, Cached>();
 const key = (display: SemesterDisplay) => `calendar-${display}`;
 const cached = (display: SemesterDisplay) => {
@@ -102,13 +103,56 @@ function applyChanges(response: CalendarData, started: number) {
   }
   return normalizeCalendar({ ...response, items: response.items.map((item) => {
     const change = stateChanges.get(item.key);
-    return change && change.revision > started ? { ...item, ...change.patch } : item;
+    let updated = change && change.revision > started ? { ...item, ...change.patch } : item;
+    const submission = submissionChanges.get(item.key);
+    if (submission && (submission.revision > started || response.fetchedAt <= submission.fetchedAt || failed.has(item.courseId))) {
+      updated = withSubmission(updated, submission.status);
+    }
+    return updated;
   }) });
+}
+
+function withSubmission(item: CalendarItem, submission: SubmissionView['info']['status']): CalendarItem {
+  const status = submission === 'submitted' ? 'submitted'
+    : item.due !== null && item.due * 1000 < Date.now() ? 'overdue' : submission;
+  return { ...item, status, done: item.doneOverride ?? status === 'submitted' };
+}
+
+function applySubmission(cmid: number, status: SubmissionView['info']['status'], checked = false) {
+  const itemKey = `assign:${cmid}`;
+  submissionChanges.set(itemKey, { status, revision: ++stateRevision,
+    fetchedAt: Math.max(cached('current')?.data.fetchedAt ?? 0, cached('all')?.data.fetchedAt ?? 0) });
+  for (const display of ['all', 'current'] as const) {
+    const value = cached(display);
+    if (!value) continue;
+    save(display, { ...value, data: { ...value.data,
+      items: value.data.items.map((item) => item.key === itemKey
+        ? withSubmission(checked ? { ...item, doneOverride: true } : item, status) : item) } });
+  }
+  showStored();
+}
+
+export function markAssignmentSubmitted(cmid: number) {
+  applySubmission(cmid, 'submitted', true);
+}
+
+export function refreshAssignment(cmid: number): Promise<SubmissionView> {
+  const existing = submissionReads.get(cmid);
+  if (existing) return existing;
+  const version = sessionVersion(), started = stateRevision, itemKey = `assign:${cmid}`;
+  const job = api.submission(cmid).then((view) => {
+    if (!isCurrentSession(version)) return view;
+    if ((submissionChanges.get(itemKey)?.revision ?? 0) > started) return view;
+    applySubmission(cmid, view.info.status);
+    return view;
+  }).finally(() => { if (submissionReads.get(cmid) === job) submissionReads.delete(cmid); });
+  submissionReads.set(cmid, job);
+  return job;
 }
 
 async function fetchMode(display: SemesterDisplay, refresh = false, storedOnly = false): Promise<CalendarData> {
   let existing = pending.get(display);
-  if (storedOnly) existing?.controller.abort();
+  if (storedOnly || (refresh && !existing?.refresh)) existing?.controller.abort();
   if (existing?.controller.signal.aborted) existing = undefined;
   if (existing) return existing.job;
   const version = sessionVersion(), started = stateRevision, currentStarted = currentResponseRevision;
@@ -126,7 +170,7 @@ async function fetchMode(display: SemesterDisplay, refresh = false, storedOnly =
     }
     return data;
   })().finally(() => { if (pending.get(display)?.job === job) pending.delete(display); });
-  pending.set(display, { job, controller });
+  pending.set(display, { job, controller, refresh });
   return job;
 }
 
@@ -155,9 +199,6 @@ class CalendarResource extends Resource<CalendarData> {
       await refreshCurrentCalendar(true, true);
       return;
     }
-    const active = pending.get('current');
-    active?.controller.abort();
-    pending.delete('current');
     schoolRefresh.add('current');
     return super.refresh();
   }
@@ -302,7 +343,6 @@ export async function refreshStoredCalendar(): Promise<boolean> {
 }
 
 export function setCalendarSemesterDisplay(display: SemesterDisplay) {
-  display = resolveSemesterDisplay(display);
   if (calendarSemesterDisplay === display) return;
   calendarSemesterDisplay = display;
   storedDisplay = display;
@@ -319,6 +359,8 @@ export function setCalendarSemesterDisplay(display: SemesterDisplay) {
 onSessionChange(() => {
   for (const request of pending.values()) request.controller.abort();
   pending.clear();
+  submissionReads.clear();
+  submissionChanges.clear();
   memory.clear();
   removeUserData('calendar-all');
   stateChanges.clear();

@@ -155,7 +155,7 @@ actor WidgetSync {
                 patch["attendance"] = attendance
             } else if resource == "calendar" {
                 let display = WidgetModel.semesterDisplay(before.object("preferences").text("semesterDisplay"))
-                let calendar = try await fetch("/api/calendar?refresh=1&semester=" + display, owner: owner) as? JSON ?? [:]
+                let calendar = try await fetch("/api/calendar?refresh=\(force ? 1 : 0)&semester=" + display, owner: owner) as? JSON ?? [:]
                 let todos = try await fetch("/api/todos", owner: owner) as? [JSON] ?? []
                 patch["deadlines"] = Self.deadlines(calendar: calendar, todos: todos, display: display)
                 patch["semesterDisplay"] = display

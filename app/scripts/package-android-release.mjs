@@ -19,7 +19,7 @@ export async function sha256(file) {
   return digest.digest('hex');
 }
 
-export async function packageRelease({ apk, versionCode, output, version, tag = `v${version}`, repository, notes = '', prerelease = false }) {
+async function packageRelease({ apk, versionCode, output, version, tag = `v${version}`, repository, notes = '', prerelease = false }) {
   if (!Number.isSafeInteger(versionCode) || versionCode < 1 || versionCode > 2147483647) throw new Error('Android versionCode is invalid.');
   const { name, url } = releaseIdentity(repository, tag, version, prerelease);
   const size = (await stat(apk)).size;

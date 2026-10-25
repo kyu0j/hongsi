@@ -32,6 +32,7 @@
   import ConnBanner from './shared/ui/ConnBanner.svelte';
   import Icon from './shared/ui/Icon.svelte';
   import Downloads from './features/files/Downloads.svelte';
+  import CampusMap from './features/campus-map/CampusMap.svelte';
   import Notices from './features/classroom/Notices.svelte';
   import ProfileSheet from './features/settings/ProfileSheet.svelte';
   import PullRefresh from './shared/ui/PullRefresh.svelte';
@@ -296,6 +297,7 @@
             <span class="tab-name">{TITLES[route.tab]}</span>
           </h1>
           <div class="top-actions">
+            <CampusMap />
             <Downloads />
             <Notices />
             <button class="avatar-btn" onclick={() => (profileOpen = true)} aria-label="설정 열기"><Avatar size={34} /></button>

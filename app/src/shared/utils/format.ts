@@ -50,7 +50,7 @@ export function time(sec: number): string {
   return `${hh}:${mm}`;
 }
 
-export function shortDate(sec: number): string {
+function shortDate(sec: number): string {
   const { m, d, wd } = parts(sec * 1000);
   return `${m}/${d}(${WEEKDAYS[wd]})`;
 }

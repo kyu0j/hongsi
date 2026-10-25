@@ -67,7 +67,7 @@ export function onSchoolAuthRequired(listener: () => void) {
   return () => schoolAuthListeners.delete(listener);
 }
 
-export function schoolAuthRequired() {
+function schoolAuthRequired() {
   schoolAuthListeners.forEach((listener) => listener());
 }
 

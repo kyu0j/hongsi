@@ -23,7 +23,11 @@ pub(crate) struct CalendarQuery {
 pub(crate) async fn calendar_data(State(st): State<Shared>, user: CurrentUser, Query(q): Query<CalendarQuery>) -> ApiResult<Value> {
     let kind=if q.semester.enabled()==SemesterDisplay::All { "archive" } else { "calendar" };
     let school=user.session.school()?;
-    crate::school_records::read(&st.db,user.session.user_id,&school,kind,false).await?;
+    let refresh = if q.refresh == Some(1) { crate::school_records::Refresh::Manual } else { crate::school_records::Refresh::Cached };
+    crate::school_records::read(&st.db,user.session.user_id,&school,"calendar",refresh).await?;
+    if kind == "archive" {
+        crate::school_records::read(&st.db,user.session.user_id,&school,kind,false).await?;
+    }
     Ok(Json(crate::school_records::rendered(&st.db,user.session.user_id,kind).await?))
 }
 

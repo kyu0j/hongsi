@@ -12,8 +12,8 @@ const MIN_SPIN_MS = 700;
 const KST = 9 * 3600_000;
 const STORE = 'attendance-confirmed';
 
-export type TodayClass = ClassSlot & { at: number };
-export type Mark = { label: string; kind: MarkKind; source: 'school' | 'app' };
+type TodayClass = ClassSlot & { at: number };
+type Mark = { label: string; kind: MarkKind; source: 'school' | 'app' };
 type CourseRef = { code: string | null; name: string; at?: number; lectureKey?: string };
 type SavedReceipt = { receipt: AttendanceReceipt; synced: boolean };
 const LABEL: Partial<Record<MarkKind, string>> = { present: '출석', late: '지각', excused: '공결', absent: '결석' };
@@ -69,7 +69,7 @@ export const nextClass = (now: number) => todayClasses(timetable.data?.slots ?? 
 export const periodLabel = (c: ClassSlot) =>
   c.periods.length > 1 ? `${c.periods[0]}–${c.periods[c.periods.length - 1]}교시` : `${c.periods[0]}교시`;
 
-export function sameCourse(l: { code?: string | null; name: string }, c: CourseRef): boolean {
+function sameCourse(l: { code?: string | null; name: string }, c: CourseRef): boolean {
   if (l.code && c.code) return l.code === c.code;
   return norm(l.name) === norm(c.name);
 }

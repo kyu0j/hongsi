@@ -17,6 +17,8 @@ import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
+import app.tauri.plugin.Channel
+import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONArray
 import java.io.FileNotFoundException
 import kotlin.concurrent.thread
@@ -29,6 +31,9 @@ class SaveDownloadArgs { lateinit var path: String; lateinit var name: String }
 
 @InvokeArg
 class CheckDownloadsArgs { var paths: Array<String?> = emptyArray() }
+
+@InvokeArg
+class MapTrackingArgs { lateinit var action: String; var events: Channel? = null }
 
 internal object ExternalIntents {
     fun url(value: String): Intent {
@@ -43,6 +48,10 @@ internal object ExternalIntents {
     Permission(strings = [Manifest.permission.WRITE_EXTERNAL_STORAGE], alias = "downloads")
 ])
 class ExternalPlugin(private val host: Activity) : Plugin(host) {
+    private val tracking = lazy { MapTracking(host) }
+    override fun onPause(activity: AppCompatActivity) { if (tracking.isInitialized()) tracking.value.pause() }
+    override fun onResume(activity: AppCompatActivity) { if (tracking.isInitialized()) tracking.value.resume() }
+    override fun onDestroy(activity: AppCompatActivity) { if (tracking.isInitialized()) tracking.value.stop() }
     private fun locationPermissionState(): String {
         if (ContextCompat.checkSelfPermission(host, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(host, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) return "granted"
@@ -54,7 +63,7 @@ class ExternalPlugin(private val host: Activity) : Plugin(host) {
             try {
                 when (action) {
                     "settings" -> host.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${host.packageName}".toUri()))
-                    "request" -> if (locationPermissionState() == "default") {
+                    "request", "precise" -> if (locationPermissionState() == "default" || (action == "precise" && ContextCompat.checkSelfPermission(host, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
                         requestPermissionForAlias("location", invoke, "locationPermissionResult")
                         return@runOnUiThread
                     }
@@ -65,7 +74,26 @@ class ExternalPlugin(private val host: Activity) : Plugin(host) {
     }
     @PermissionCallback
     private fun locationPermissionResult(invoke: Invoke) {
-        invoke.resolve(JSObject().put("permission", locationPermissionState()))
+        invoke.resolve(JSObject().put("permission", locationPermissionState())
+            .put("precise", ContextCompat.checkSelfPermission(host, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED))
+    }
+    @Command fun mapTracking(invoke: Invoke) {
+        val args = invoke.parseArgs(MapTrackingArgs::class.java)
+        host.runOnUiThread {
+            try {
+                val available = when (args.action) {
+                    "start" -> {
+                        check(locationPermissionState() == "granted") { "위치 권한을 허용해 주세요." }
+                        tracking.value.start(requireNotNull(args.events)); true
+                    }
+                    "stop" -> { if (tracking.isInitialized()) tracking.value.stop(); true }
+                    "heading-on" -> tracking.value.heading(true)
+                    "heading-off" -> if (tracking.isInitialized()) tracking.value.heading(false) else true
+                    else -> throw IllegalArgumentException("위치 요청을 확인해 주세요.")
+                }
+                invoke.resolve(JSObject().put("headingAvailable", available))
+            } catch (error: Exception) { invoke.reject(error.message ?: "위치를 확인하지 못했어요.") }
+        }
     }
     @Command fun setWidgetTheme(invoke: Invoke) {
         val value = invoke.parseArgs(ExternalArgs::class.java).value

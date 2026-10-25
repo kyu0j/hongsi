@@ -7,11 +7,16 @@ use crate::encode;
 use crate::{Direct, Reply, School, R};
 
 impl Direct {
-    pub(super) async fn calendar(&self, _refresh:bool, display:SemesterDisplay)->R<Value>{
-        self.shared_school(if display.enabled()==SemesterDisplay::All{"archive"}else{"calendar"},false).await
+    pub(super) async fn calendar(&self, refresh:bool, display:SemesterDisplay)->R<Value>{
+        let current = self.shared_school_for("calendar",refresh,false,true).await?;
+        if display.enabled()==SemesterDisplay::All {
+            self.shared_school("archive",false).await
+        } else {
+            Ok(current)
+        }
     }
     pub(super) async fn calendar_archive(&self,refresh:bool,display:SemesterDisplay)->R<Value>{
-        self.shared_school_for("archive",refresh,display==SemesterDisplay::Current).await
+        self.shared_school_for("archive",refresh,display==SemesterDisplay::Current,false).await
     }
 
     pub(super) async fn patch_items(&self, s: &School, key: &str, f: impl Fn(&mut calendar::CalendarItem)) {

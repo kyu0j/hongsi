@@ -2,7 +2,7 @@ import { isAndroid, isIOS } from '../../platform/env';
 import { invoke } from '@tauri-apps/api/core';
 
 export const canUpdateApp = isAndroid || isIOS;
-export type AppRelease = { version: string | null; versionCode: number; size: number | null; notes: string };
+type AppRelease = { version: string | null; versionCode: number; size: number | null; notes: string };
 type UpdateSource = 'direct' | 'play' | 'appstore';
 type Info = { source: UpdateSource; currentVersion: string; currentCode: number; canInstall: boolean; installError: string | null };
 type Check = Info & { configured: boolean; release: AppRelease | null };

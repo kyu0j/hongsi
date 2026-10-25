@@ -3,6 +3,10 @@ import { invoke } from '@tauri-apps/api/core';
 
 export type LocationPermission = 'unknown' | 'granted' | 'denied' | 'default' | 'unsupported';
 
+export async function mapLocationAccess(request = false): Promise<{ permission: LocationPermission; precise: boolean | null }> {
+  return invoke('location_permission', { action: request ? 'precise' : 'check' });
+}
+
 async function browserLocationPermission(): Promise<LocationPermission> {
   if (!window.isSecureContext || !('geolocation' in navigator)) return 'unsupported';
   try {
@@ -30,7 +34,7 @@ export async function locationPermission(action: 'check' | 'request' | 'settings
   ));
 }
 
-export async function currentLocation(): Promise<{ latitude: number; longitude: number; accuracy: number }> {
+export async function currentLocation(options: { maximumAge?: number } = {}): Promise<{ latitude: number; longitude: number; accuracy: number }> {
   if (isIOS) {
     return invoke('current_location');
   }
@@ -38,6 +42,6 @@ export async function currentLocation(): Promise<{ latitude: number; longitude: 
   return new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(
     ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy }),
     (error) => reject(new Error(error.code === 1 ? '위치 권한을 허용해 주세요.' : '위치를 찾지 못했어요.')),
-    { enableHighAccuracy: true, timeout: 12_000, maximumAge: 30_000 },
+    { enableHighAccuracy: true, timeout: 12_000, maximumAge: options.maximumAge ?? 30_000 },
   ));
 }

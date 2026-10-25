@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
+  import { refreshAssignment } from '../calendar/calendar-resources.svelte';
+  import { handleAuthError } from '../auth/auth-state.svelte';
   import { clock } from '../../shared/state/clock.svelte';
   import { setItemAlert, setItemAlertLeads } from '../calendar/actions.svelte';
   import { itemStatus, isFinished } from '../calendar/colors';
@@ -41,6 +44,9 @@
 
   $effect(() => {
     open = key !== null;
+    if (key?.startsWith('assign:')) {
+      untrack(() => { void refreshAssignment(Number(key!.split(':')[1])).catch(handleAuthError); });
+    }
   });
 
   const cmid = $derived(item ? Number(item.key.split(':')[1]) : 0);

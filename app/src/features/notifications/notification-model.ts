@@ -1,4 +1,4 @@
-export type NotificationTarget =
+type NotificationTarget =
   | { kind: 'item'; key: string }
   | { kind: 'todo'; id: number }
   | { kind: 'seat'; id: number }

@@ -2,7 +2,6 @@ import { api, uncertainWrite } from '../../shared/api/api';
 import { app, handleAuthError, onBeforeLogout } from '../auth/auth-state.svelte';
 import { pref, setPref } from '../../shared/state/preferences';
 import { setCalendarSemesterDisplay } from '../calendar/calendar-resources.svelte';
-import { resolveSemesterDisplay } from '../calendar/semester';
 import { isCurrentSession, onSessionChange, readUserData, sessionUser, sessionVersion, writeUserData } from '../../shared/state/session';
 import { toastOnce } from '../../shared/state/ui.svelte';
 import type { AccountPreferences, AccountPreferenceChanges, SemesterDisplay } from '../../shared/types';
@@ -10,7 +9,7 @@ import type { AccountPreferences, AccountPreferenceChanges, SemesterDisplay } fr
 export type Theme = 'system' | 'light' | 'dark';
 export type Midnight = 'prev' | 'same';
 export type MealPlace = 'dorm' | 'staff';
-export type TimetableDisplay = 'full' | 'fit';
+type TimetableDisplay = 'full' | 'fit';
 
 export const ALERT_LEADS: { min: number; label: string }[] = [
   { min: 1440, label: '1일 전' },
@@ -42,7 +41,7 @@ export function setTimetableDisplay(value: TimetableDisplay) {
 }
 
 export function setSemesterDisplay(value: SemesterDisplay) {
-  changeAccountPreferences({ semesterDisplay: resolveSemesterDisplay(value) });
+  changeAccountPreferences({ semesterDisplay: value });
 }
 
 export function setMealPlace(value: MealPlace) {
@@ -91,7 +90,7 @@ function apply(value: AccountPreferences, changes: AccountPreferenceChanges = {}
   settings.showUndatedAssignments = next.showUndatedAssignments;
   settings.mealPlace = next.mealPlace;
   settings.timetableDisplay = next.timetableDisplay;
-  settings.semesterDisplay = resolveSemesterDisplay(next.semesterDisplay);
+  settings.semesterDisplay = next.semesterDisplay;
   setCalendarSemesterDisplay(settings.semesterDisplay);
   settings.alertLeads = [...next.alertLeads];
   accountPreferences.updatedAt = value.updatedAt;

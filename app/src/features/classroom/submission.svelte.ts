@@ -2,13 +2,13 @@ import { api, ApiError } from '../../shared/api/api';
 import { beginCalendarChange } from '../calendar/calendar-sync.svelte';
 import { errorText } from '../../shared/api/net.svelte';
 import { isCurrentSession, onSessionChange, readUserData, sessionVersion, writeUserData } from '../../shared/state/session';
-import { calendar } from '../calendar/calendar-resources.svelte';
+import { calendar, markAssignmentSubmitted } from '../calendar/calendar-resources.svelte';
 import { handleAuthError } from '../auth/auth-state.svelte';
 import { todos } from '../calendar/todo-resource.svelte';
 import type { SubmissionJob } from '../../shared/types';
 
 type Pending = { id: string; created: number };
-export type SubmissionOperation = {
+type SubmissionOperation = {
   cmid: number;
   job: SubmissionJob | null;
   delayed: boolean;
@@ -68,10 +68,7 @@ function receive(operation: SubmissionOperation, snapshot: SubmissionJob) {
     : snapshot.error ? errorText(snapshot.error, '제출하지 못했어요.') : '';
   operation.delayed = snapshot.status === 'uncertain';
   if (snapshot.status === 'complete' && snapshot.result?.info.status === 'submitted') {
-    const key = `assign:${operation.cmid}`;
-    if (calendar.data) calendar.set({ ...calendar.data,
-      items: calendar.data.items.map((item) => item.key === key ? { ...item, status: 'submitted', done: true, doneOverride: true } : item),
-    });
+    markAssignmentSubmitted(operation.cmid);
     pending(operation.cmid, null);
     if (!completed) void todos.refresh();
   } else if (snapshot.status === 'failed') {

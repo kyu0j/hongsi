@@ -8,6 +8,7 @@ import QuickLook
 import UniformTypeIdentifiers
 
 private struct ValueArgs: Decodable { let value: String }
+private struct MapTrackingArgs: Decodable { let action: String; let events: Channel? }
 
 @_cdecl("hongsi_install_widget_launch")
 func installWidgetLaunch() {
@@ -39,6 +40,7 @@ final class HongsiIOSPlugin: Plugin, QLPreviewControllerDataSource, QLPreviewCon
     private var previewURL: URL?
     private var scopedPreviewURL: URL?
     private var location: HongsiLocation?
+    private var mapTracking: MapTracking?
     private var updater: HongsiAppUpdate?
     private weak var studentCardWebView: WKWebView?
 
@@ -50,9 +52,11 @@ final class HongsiIOSPlugin: Plugin, QLPreviewControllerDataSource, QLPreviewCon
     deinit { NotificationCenter.default.removeObserver(self) }
 
     @objc private func studentCardPause() {
+        Task { @MainActor in mapTracking?.pause() }
         studentCardWebView?.evaluateJavaScript("window.dispatchEvent(new Event('hongsi-pause'))", completionHandler: nil)
     }
     @objc private func studentCardResume() {
+        Task { @MainActor in mapTracking?.resume() }
         studentCardWebView?.evaluateJavaScript("window.dispatchEvent(new Event('hongsi-resume'))", completionHandler: nil)
     }
     @objc func studentCardContext(_ invoke: Invoke) {
@@ -121,8 +125,8 @@ final class HongsiIOSPlugin: Plugin, QLPreviewControllerDataSource, QLPreviewCon
                         invoke.reject("기기 설정을 열지 못했어요."); return
                     }
                 }
-                let permission = action == "request" ? try await location!.requestPermission() : location!.permission
-                invoke.resolve(["permission": permission])
+                let permission = action == "request" || action == "precise" ? try await location!.requestPermission() : location!.permission
+                invoke.resolve(["permission": permission, "precise": location!.precise])
             } catch { invoke.reject(error.localizedDescription) }
         }
     }
@@ -132,6 +136,25 @@ final class HongsiIOSPlugin: Plugin, QLPreviewControllerDataSource, QLPreviewCon
             do {
                 let result = try await location!.locate(requestPermission: true)
                 invoke.resolve(["latitude": result.coordinate.latitude, "longitude": result.coordinate.longitude, "accuracy": result.horizontalAccuracy])
+            } catch { invoke.reject(error.localizedDescription) }
+        }
+    }
+    @objc func mapTracking(_ invoke: Invoke) {
+        Task { @MainActor in
+            do {
+                let args = try invoke.parseArgs(MapTrackingArgs.self)
+                if mapTracking == nil { mapTracking = MapTracking() }
+                var available = true
+                switch args.action {
+                case "start":
+                    guard let events = args.events else { invoke.reject("위치 요청을 확인해 주세요."); return }
+                    mapTracking!.start(events)
+                case "stop": mapTracking!.stop()
+                case "heading-on": available = mapTracking!.setHeading(true)
+                case "heading-off": available = mapTracking!.setHeading(false)
+                default: invoke.reject("위치 요청을 확인해 주세요."); return
+                }
+                invoke.resolve(["headingAvailable": available])
             } catch { invoke.reject(error.localizedDescription) }
         }
     }

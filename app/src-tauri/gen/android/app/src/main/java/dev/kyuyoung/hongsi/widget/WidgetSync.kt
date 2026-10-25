@@ -156,7 +156,7 @@ internal object WidgetSync {
                 }
                 "calendar" -> {
                     val display = WidgetData.semesterDisplay(before.optJSONObject("preferences")?.text("semesterDisplay").orEmpty())
-                    val data = get("/api/calendar?refresh=1&semester=$display") as JSONObject
+                    val data = get("/api/calendar?refresh=${if (force) 1 else 0}&semester=$display") as JSONObject
                     val todos = (get("/api/todos") as JSONArray).objects()
                     val courses = data.array("courses")
                     val courseIds = courses.map { it.optLong("id") }.toSet()

@@ -75,7 +75,7 @@ async function profile(name, id, temp) {
   return { path, uuid, team: teams[0], prefix: prefixes[0], certificates };
 }
 
-export async function prepareSigning() {
+async function prepareSigning() {
   for (const key of ['IOS_CERTIFICATE_BASE64', 'IOS_CERTIFICATE_PASSWORD', 'IOS_APP_PROFILE_BASE64', 'IOS_WIDGET_PROFILE_BASE64']) required(key);
   const { temp, state } = paths();
   await mkdir(temp, { recursive: true, mode: 0o700 });
@@ -115,7 +115,7 @@ export async function prepareSigning() {
   console.log('App Store signing configuration is ready.');
 }
 
-export async function cleanup() {
+async function cleanup() {
   const { temp, state, spec } = paths();
   let signing;
   try { signing = JSON.parse(await readFile(state, 'utf8')); }
@@ -134,13 +134,13 @@ export async function cleanup() {
   }
 }
 
-export function buildNumber(runValue, attemptValue) {
+function buildNumber(runValue, attemptValue) {
   const run = Number(runValue), attempt = Number(attemptValue);
   if (!Number.isSafeInteger(run) || run < 1 || run > 999899 || !Number.isSafeInteger(attempt) || attempt < 1 || attempt > 99) throw new Error('Invalid iOS build number.');
   return `${Math.floor(run / 100) + 1}.${run % 100}.${attempt}`;
 }
 
-export function projectSpec(signing, version, number) {
+function projectSpec(signing, version, number) {
   if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) throw new Error('A numeric iOS marketing version is required.');
   const overlay = { include: ['project.yml'], settings: { base: { MARKETING_VERSION: version, CURRENT_PROJECT_VERSION: number } }, targets: {} };
   for (const target of Object.keys(targets)) overlay.targets[target] = { settings: { configs: { Release: {
@@ -150,14 +150,14 @@ export function projectSpec(signing, version, number) {
   return overlay;
 }
 
-export function exportOptions(signing) {
+function exportOptions(signing) {
   return { method: 'app-store-connect', destination: 'export', signingStyle: 'manual', teamID: signing.team,
     signingCertificate: signing.identity, manageAppVersionAndBuildNumber: false,
     provisioningProfiles: Object.fromEntries(Object.entries(targets).map(([target, id]) => [id, signing.targets[target]])),
     stripSwiftSymbols: true, uploadSymbols: false };
 }
 
-export async function build() {
+async function build() {
   const { temp, state, spec } = paths();
   const signing = JSON.parse(await readFile(state, 'utf8'));
   const pkg = JSON.parse(await readFile(join(root, 'app/package.json'), 'utf8'));
@@ -190,7 +190,7 @@ export async function build() {
   console.log(`Packaged ${stem}-ios-appstore.ipa (${pkg.version}, build ${number}).`);
 }
 
-export async function publish(directory) {
+async function publish(directory) {
   const repository = repositoryName(), tag = required('RELEASE_TAG');
   const prerelease = process.env.RELEASE_PRERELEASE === 'true';
   const name = `${assetStem(tag, prerelease)}-ios-appstore.ipa`;

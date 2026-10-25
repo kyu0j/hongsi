@@ -21,7 +21,7 @@ struct Request {
 fn allowed(method: &str, path: &str, owner: &str) -> bool {
     if owner.len() != 64 || !owner.bytes().all(|b| b.is_ascii_hexdigit()) { return false; }
     match method {
-        "GET" => matches!(path, "/api/school/revisions" | "/api/school/stored?kind=timetable" | "/api/preferences" | "/api/calendar?refresh=1&semester=current" |
+        "GET" => matches!(path, "/api/school/revisions" | "/api/school/stored?kind=timetable" | "/api/preferences" | "/api/calendar?refresh=0&semester=current" | "/api/calendar?refresh=0&semester=all" | "/api/calendar?refresh=1&semester=current" |
             "/api/calendar?refresh=1&semester=all" | "/api/todos" | "/api/attendance/active" |
             "/api/attendance/receipts" | "/api/seats/session") ||
             (path.starts_with("/api/attendance/course?code=") && path.len() < 256 && !path.contains('&')),

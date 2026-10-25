@@ -1,6 +1,6 @@
 import type { ClassNotification } from '../types';
 
-export type Toast = { id: number; text: string; tone: 'info' | 'success' | 'error' | 'alarm'; action?: () => void; detail?: string };
+type Toast = { id: number; text: string; tone: 'info' | 'success' | 'error' | 'alarm'; action?: () => void; detail?: string };
 
 let nextId = 1;
 export const toasts = $state<Toast[]>([]);
