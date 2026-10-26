@@ -43,7 +43,10 @@ impl Direct {
         let reply = self.server(&Method::PUT, &path, Some(body)).await;
         if reply.status == 200 {
             if let (Ok(s), Some(on)) = (self.current().await, body["on"].as_bool()) {
-                self.patch_items(&s, key, |item| item.alert = on).await;
+                self.patch_items(&s, key, |item| {
+                    item.alert = on;
+                    if on { item.alert_leads = None; }
+                }).await;
             }
         }
         reply

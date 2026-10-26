@@ -60,7 +60,7 @@
   let initialValues = $state('');
   const formValues = $derived(JSON.stringify({
     title, note, courseId, date, time, parentKey, notify,
-    alertLeads: [...(alertLeads ?? settings.alertLeads)].sort((a, b) => b - a),
+    alertLeads: alertLeads === null ? null : [...alertLeads].sort((a, b) => b - a),
   }));
   let titleEl: HTMLInputElement | undefined = $state();
   let editing: number | 'new' | null = null;
@@ -242,7 +242,7 @@
 
     {#if date}
       <DeadlineAlerts enabled={notify} leads={alertLeads} label="이 할 일 마감 알림" disabled={busy}
-        ontoggle={(on) => { notify = on; }} onchange={(leads) => { alertLeads = leads; }} />
+        ontoggle={(on) => { notify = on; if (on) alertLeads = null; }} onchange={(leads) => { alertLeads = leads; }} />
     {/if}
 
     <label class="field">

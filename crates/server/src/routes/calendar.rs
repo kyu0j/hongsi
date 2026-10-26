@@ -180,7 +180,10 @@ pub(crate) async fn set_alert(
         return Err(ApiError::bad_request("잘못된 항목이에요."));
     }
     db::set_item_alert(&st.db, user.session.user_id, &key, b.on).await?;
-    user.session.calendar_cache.lock().await.patch_items(&key, |item| item.alert = b.on);
+    user.session.calendar_cache.lock().await.patch_items(&key, |item| {
+        item.alert = b.on;
+        if b.on { item.alert_leads = None; }
+    });
     Ok(Json(json!({ "key": key, "on": b.on })))
 }
 

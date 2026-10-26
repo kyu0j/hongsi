@@ -107,7 +107,7 @@ async function saveItemAlert(item: CalendarItem, patch: Partial<CalendarItem>, s
 }
 
 export async function setItemAlert(item: CalendarItem, on: boolean) {
-  await saveItemAlert(item, { alert: on }, () => api.setAlert(item.key, on));
+  await saveItemAlert(item, on ? { alert: true, alertLeads: null } : { alert: false }, () => api.setAlert(item.key, on));
 }
 
 export async function setItemAlertLeads(item: CalendarItem, leads: number[] | null) {

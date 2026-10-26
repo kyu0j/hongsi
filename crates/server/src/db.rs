@@ -189,13 +189,19 @@ pub async fn item_alerts_off(db: impl sqlx::Executor<'_, Database = sqlx::Postgr
 }
 
 pub async fn set_item_alert(db: &PgPool, user_id: i64, key: &str, on: bool) -> sqlx::Result<()> {
+    let mut tx = db.begin().await?;
+    crate::todos::lock(&mut tx, user_id).await?;
     let q = if on {
         sqlx::query("delete from item_alerts_off where user_id = $1 and item_key = $2")
     } else {
         sqlx::query("insert into item_alerts_off (user_id, item_key) values ($1, $2) on conflict do nothing")
     };
-    q.bind(user_id).bind(key).execute(db).await?;
-    Ok(())
+    q.bind(user_id).bind(key).execute(&mut *tx).await?;
+    if on {
+        sqlx::query("delete from item_alert_leads where user_id = $1 and item_key = $2")
+            .bind(user_id).bind(key).execute(&mut *tx).await?;
+    }
+    tx.commit().await
 }
 
 
