@@ -1,6 +1,5 @@
 import { handleAuthError } from '../auth/auth-state.svelte';
 import { api, isApp, native } from '../../shared/api/api';
-import { isIOS } from '../../platform/env';
 import { connectionError, responseError, responseFormat } from '../../shared/api/api-error';
 import { errorText, reportServer } from '../../shared/api/net.svelte';
 import { inSession, isCurrentSession, sessionVersion, onSessionChange, readUserData, writeUserData } from '../../shared/state/session';
@@ -132,7 +131,7 @@ export async function downloadFile(src: FileSource, name: string, course: string
       path: file?.path ?? null,
     };
     remember(record);
-    toast(isIOS ? '파일 앱의 ‘홍시’에 저장했어요.' : isApp ? '다운로드 폴더 안의 ‘홍시’ 폴더에 저장했어요.' : '다운로드했어요.', 'success');
+    toast('다운로드를 완료했어요', 'success');
     return record;
   } catch (e) {
     if (!handleAuthError(e)) toastOnce(fileErrorText(e, '다운로드에 실패했어요.'), 'error');

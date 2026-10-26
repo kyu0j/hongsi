@@ -2,7 +2,14 @@
 
 요일별 메뉴와 가격, 식사 제공 시간을 확인해요.
 
-[홈](../../README.md) | [사용 안내](../user-guide.md) | [출결](attendance.md) | [캘린더](calendar.md) | [열람실](seats.md)
+| 문서 | 내용 |
+| --- | --- |
+| [홈](../../README.md) | 프로젝트 소개 |
+| [사용 안내](../user-guide.md) | 사용법 안내 |
+| [출결](attendance.md) | 출석하고 시간표 보기 |
+| [캘린더](calendar.md) | 과제와 할 일 관리하기 |
+| [열람실](seats.md) | 빈자리와 이용 시간 확인하기 |
+
 
 ![요일을 선택하고 제2기숙사의 아침과 점심 메뉴를 확인하는 화면](../screenshots/meals-mobile.png)
 
@@ -24,4 +31,10 @@
 
 ---
 
-[사용 안내](../user-guide.md)
+| 문서 | 내용 |
+| --- | --- |
+| [홈](../../README.md) | 프로젝트 소개 |
+| [사용 안내](../user-guide.md) | 사용법 안내 |
+| [출결](attendance.md) | 출석하고 시간표 보기 |
+| [캘린더](calendar.md) | 과제와 할 일 관리하기 |
+| [열람실](seats.md) | 빈자리와 이용 시간 확인하기 |

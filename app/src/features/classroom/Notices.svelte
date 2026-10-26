@@ -11,6 +11,7 @@
   import { pressFeedback } from '../../shared/utils/press-feedback';
   import type { ClassNotification } from '../../shared/types';
   import EmptyState from '../../shared/ui/EmptyState.svelte';
+  import DownloadIcon from '../files/DownloadIcon.svelte';
   import Icon from '../../shared/ui/Icon.svelte';
   import LoadError from '../../shared/ui/LoadError.svelte';
   import NoticeSheet from './NoticeSheet.svelte';
@@ -161,8 +162,8 @@
         {@const k = kind(n)}
         {@const busy = busyFor(n)}
         <li class:new={!seen.has(n.url)}>
-          <a href={n.url} target="_blank" rel="noopener noreferrer" onclick={(e) => openNotice(e, n)} aria-busy={busy}>
-            <span class="ico {k.tone ?? ''}" class:spin={busy}><Icon name={busy ? 'refresh' : k.icon} size={18} /></span>
+          <a class:file-download={n.kind === 'ubfile' || n.kind === 'resource'} href={n.url} target="_blank" rel="noopener noreferrer" onclick={(e) => openNotice(e, n)} aria-busy={busy}>
+            <span class="ico {k.tone ?? ''}">{#if busy}<DownloadIcon active size={18} />{:else}<Icon name={k.icon} size={18} />{/if}</span>
             <span class="txt">
               <strong>{n.message}</strong>
               <span class="muted">{n.course}{n.section ? ` · ${n.section}` : ''}</span>
@@ -235,7 +236,7 @@
     text-decoration: none;
   }
 
-  a:hover {
+  a:not(.file-download):hover {
     background: var(--surface-2);
   }
 

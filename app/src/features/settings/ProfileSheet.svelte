@@ -29,15 +29,17 @@
   import Sheet from '../../shared/ui/Sheet.svelte';
   import Switch from '../../shared/ui/Switch.svelte';
   import StudentCardSheet from '../student-card/StudentCardSheet.svelte';
+  import CreditsSheet from './CreditsSheet.svelte';
 
   let { open = $bindable(false), onlogout, onlogoutall, ondeletedata }: { open: boolean; onlogout: () => Promise<void>; onlogoutall: () => Promise<void>; ondeletedata: () => Promise<void> } = $props();
   let confirmLogoutAll = $state(false);
   let confirmDeleteData = $state(false);
   let studentCardOpen = $state(false);
+  let creditsOpen = $state(false);
 
   $effect(() => { if (!open || app.loggingOut || !app.account) studentCardOpen = false; });
 
-  $effect(() => { if (!open) { confirmLogoutAll = false; confirmDeleteData = false; } else untrack(() => { void refreshAccountPreferences(true); }); });
+  $effect(() => { if (!open) { confirmLogoutAll = false; confirmDeleteData = false; creditsOpen = false; } else untrack(() => { void refreshAccountPreferences(true); }); });
 
   const THEMES: { id: Theme; label: string }[] = [
     { id: 'system', label: '시스템' },
@@ -139,26 +141,25 @@
     </div>
   </div>
 
-  <h4 class="section-title">출결</h4>
+  <h4 class="section-title">위치</h4>
   <div class="settings card"><LocationPermissionSettings /></div>
 
   <h4 class="section-title">알림</h4>
   <div class="settings card"><NotificationSettings /></div>
 
-  {#if canUpdateApp || !isApp}
-    <h4 class="section-title">{isApp ? '앱 업데이트' : '웹 버전'}</h4>
+    <h4 class="section-title">홍시</h4>
     <div class="settings card">
       <div class="set-label">
         <div class="version-info">
-          <span>홍시 {version}</span>
+          <span>홍시 {isApp ? '앱' : '웹'} {version}</span>
           <span class="commit-hash muted" title={APP_COMMIT || undefined}>{APP_COMMIT ? APP_COMMIT.slice(0, 7) : '커밋 정보 없음'}</span>
         </div>
         {#if canUpdateApp}
           <button class="filter" disabled={appUpdater.checking || appUpdater.installing} onclick={() => appUpdater.check(true)}>{appUpdater.checking ? '확인 중…' : '업데이트 확인'}</button>
         {/if}
       </div>
+      <button class="credits-button" onclick={() => creditsOpen = true}>오픈소스 라이선스<Icon name="right" size={18} /></button>
     </div>
-  {/if}
 
 
   <h4 class="section-title">계정</h4>
@@ -179,6 +180,7 @@
 </Sheet>
 
 {#if hasStudentCard}<StudentCardSheet bind:open={studentCardOpen} />{/if}
+<CreditsSheet bind:open={creditsOpen} />
 
 <Sheet bind:open={confirmLogoutAll} title="모든 기기에서 로그아웃할까요?" confirm>
   <div class="logout-confirm">
@@ -271,6 +273,7 @@
 
   .version-info { display: grid; gap: 4px; min-width: 0; }
   .commit-hash { font-size: 12px; font-weight: 400; line-height: 1.5; user-select: text; }
+  .credits-button { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding-top: 16px; border-top: 1px solid var(--border); text-align: left; color: var(--text-2); font-size: 14px; }
 
   .seg {
     display: grid;

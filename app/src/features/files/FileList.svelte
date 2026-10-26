@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { downloadFile, downloads, fileId, openDownload, refreshDownloads, savedFile } from './download-state.svelte';
   import type { Attachment, FileSource } from '../../shared/types';
-  import Icon from '../../shared/ui/Icon.svelte';
+  import DownloadIcon from './DownloadIcon.svelte';
 
   let {
     files,
@@ -31,10 +31,10 @@
     {@const got = savedFile(source(i))}
     {@const busy = downloads.busy === fileId(source(i))}
     <li class:got>
-      <button class="fmain" onclick={() => press(i)} disabled={busy} title={got ? '눌러서 바로 열기' : '눌러서 받기'}>
+      <button class="fmain" onclick={() => press(i)} disabled={busy} aria-busy={busy} title={got ? '눌러서 바로 열기' : '눌러서 받기'}>
         <span class="fsize">{size(f.size)}</span>
         <span class="fname">{got?.name ?? f.name}</span>
-        <span class="ficon" class:spin={busy}>{#if got && !busy}열기{:else}<Icon name={busy ? 'refresh' : 'download'} size={17} stroke={1.9} />{/if}</span>
+        <span class="ficon" role={busy ? 'status' : undefined} aria-label={busy ? '다운로드 중' : undefined}>{#if got && !busy}열기{:else}<DownloadIcon active={busy} />{/if}</span>
       </button>
     </li>
   {/each}
@@ -65,10 +65,6 @@
     padding: 8px 10px;
     border-radius: 9px;
     text-align: left;
-  }
-
-  .fmain:hover {
-    background: var(--surface-3);
   }
 
   .ficon {

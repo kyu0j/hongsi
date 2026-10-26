@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vite';
 import { publicUrls } from './scripts/public-env.mjs';
+import { dependencyModule } from './scripts/dependency-info.mjs';
 
 const urls = publicUrls();
 
@@ -27,7 +28,11 @@ function buildCommit(): string {
 }
 
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [svelte(), {
+    name: 'dependency-info',
+    resolveId(id) { if (id === 'virtual:dependency-info') return '\0virtual:dependency-info'; },
+    load(id) { if (id === '\0virtual:dependency-info') return dependencyModule(); },
+  }],
   clearScreen: false,
   define: {
     __APP_VERSION__: JSON.stringify(process.env.HONGSI_RELEASE_LABEL || pkg.version),
