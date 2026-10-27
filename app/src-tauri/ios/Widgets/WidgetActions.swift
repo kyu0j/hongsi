@@ -22,7 +22,6 @@ struct HongsiWidgetAction: AppIntent {
         if action == "refresh" { logger.info("Refresh intent started: \(kind, privacy: .public)") }
         await WidgetActions.shared.run(kind: kind, action: action, owner: owner, detail: detail, inputAt: inputAt)
         if action == "refresh" { try? await ContinuousClock().sleep(until: feedbackEnd) }
-        WidgetCenter.shared.reloadTimelines(ofKind: kind)
         if action == "refresh" || (kind == "ATTENDANCE" && action == "submit") {
             let related = kind == "ATTENDANCE" || kind.hasPrefix("TODAY")
                 ? ["ATTENDANCE", "TODAY", "TODAY_LARGE"]
@@ -51,7 +50,6 @@ actor WidgetActions {
             }
             guard kind == "ATTENDANCE", !submitting else { return }
             if action == "begin" {
-                await WidgetSync.shared.refresh(kind, force: true)
                 let data = WidgetStore.read(), status = WidgetModel.attendance(data, state: WidgetStore.state(), now: Date())
                 guard status.available, let lecture = data.object("attendance").objects("active").first(where: { $0.text("identity") == status.identity }) else {
                     throw WidgetFailure("출석 가능 여부를 다시 확인해 주세요.")
@@ -60,7 +58,10 @@ actor WidgetActions {
                     $0["mode"] = "input"; $0["code"] = ""; $0["lecture"] = lecture; $0["inputAt"] = HongsiClock.milliseconds(); $0["message"] = ""
                 }
             } else if action == "back" {
-                try WidgetStore.changeState(owner: owner) { $0["mode"] = "ready"; $0["code"] = ""; $0["message"] = "" }
+                try WidgetStore.changeState(owner: owner) {
+                    $0["mode"] = "ready"; $0["code"] = ""; $0["message"] = ""
+                    $0["interactionAt"] = HongsiClock.milliseconds()
+                }
             } else if action == "digit" || action == "erase" {
                 try WidgetStore.changeState(owner: owner) { state in
                     try validateInput(state, inputAt: inputAt)
@@ -77,13 +78,12 @@ actor WidgetActions {
             try? WidgetStore.changeState(owner: owner) {
                 $0[kind == "SEAT" ? "seatMessage" : "message"] = (error as? WidgetFailure)?.errorDescription ?? "다시 시도해 주세요."
                 if kind == "SEAT" { $0["seatMessageId"] = Int(detail.split(separator: ":").first ?? "") ?? 0 }
-                else { $0["pending"] = false }
+                else { $0["pending"] = false; $0["interactionAt"] = HongsiClock.milliseconds() }
             }
         }
     }
     private func validateInput(_ state: JSON, inputAt: Double) throws {
-        let age = HongsiClock.milliseconds() - state.number("inputAt")
-        guard state.text("mode") == "input", state.number("inputAt") == inputAt, age >= 0, age < 600_000 else {
+        guard WidgetModel.attendanceInputActive(state, now: Date()), state.number("inputAt") == inputAt else {
             throw WidgetFailure("위젯을 새로고침해 주세요.")
         }
     }

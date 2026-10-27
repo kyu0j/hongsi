@@ -17,7 +17,8 @@ struct HongsiProvider: TimelineProvider {
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<HongsiEntry>) -> Void) {
         Task {
-            if kind != "SEAT" || !WidgetModel.seatExtending(WidgetStore.state(), seat: WidgetStore.read().object("seat"), now: Date()) {
+            let localReload = kind == "ATTENDANCE" ? WidgetModel.attendanceLocalReloadDate(WidgetStore.state(), now: Date()) : nil
+            if localReload == nil && (kind != "SEAT" || !WidgetModel.seatExtending(WidgetStore.state(), seat: WidgetStore.read().object("seat"), now: Date())) {
                 await WidgetSync.shared.refresh(kind)
             }
             let value = entry(), now = value.date
@@ -25,7 +26,7 @@ struct HongsiProvider: TimelineProvider {
             var reload = now.addingTimeInterval(15 * 60)
             if kind == "ATTENDANCE" {
                 dates = WidgetModel.attendanceTimelineDates(value.data, state: value.state, now: now)
-                reload = WidgetModel.attendanceReloadDate(value.data, now: now)
+                reload = localReload ?? WidgetModel.attendanceReloadDate(value.data, now: now)
             } else {
                 for minute in 1...60 { dates.append(Date(timeIntervalSince1970: floor(now.timeIntervalSince1970 / 60) * 60 + Double(minute * 60))) }
             }
@@ -143,8 +144,7 @@ struct HongsiWidgetView: View {
     private var data: JSON { entry.data }
     private var owner: String { data.text("owner") }
     private var enteringAttendance: Bool {
-        let age = HongsiClock.milliseconds(entry.date) - entry.state.number("inputAt")
-        return kind == "ATTENDANCE" && entry.state.text("mode") == "input" && age >= 0 && age < 600_000
+        kind == "ATTENDANCE" && WidgetModel.attendanceInputActive(entry.state, now: entry.date)
     }
     private var palette: WidgetPalette { WidgetPalette(dark: entry.theme == "dark" || (entry.theme == "system" && colorScheme == .dark), app: kind == "ATTENDANCE" || kind.hasPrefix("TODAY")) }
     private var attendanceStatus: AttendanceStatus { WidgetModel.attendance(data, state: entry.state, now: entry.date) }

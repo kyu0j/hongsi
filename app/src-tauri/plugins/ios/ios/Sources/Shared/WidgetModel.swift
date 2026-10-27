@@ -155,6 +155,18 @@ struct AttendanceStatus {
 }
 
 enum WidgetModel {
+    static func attendanceInputActive(_ state: JSON, now: Date) -> Bool {
+        let age = HongsiClock.milliseconds(now) - state.number("inputAt")
+        return state.text("mode") == "input" && age >= 0 && age < 600_000
+    }
+    static func attendanceLocalReloadDate(_ state: JSON, now: Date) -> Date? {
+        if attendanceInputActive(state, now: now) {
+            return Date(timeIntervalSince1970: state.number("inputAt") / 1000 + 600)
+        }
+        let age = HongsiClock.milliseconds(now) - state.number("interactionAt")
+        guard state.number("interactionAt") > 0, age >= 0, age < 3000 else { return nil }
+        return Date(timeIntervalSince1970: state.number("interactionAt") / 1000 + 3)
+    }
     private static let allSemestersEnabled = true
     static func seatExtending(_ state: JSON, seat: JSON, now: Date) -> Bool {
         let age = HongsiClock.milliseconds(now) - state.number("seatPendingAt")
@@ -191,7 +203,9 @@ enum WidgetModel {
 
     static func attendanceTimelineDates(_ data: JSON, state: JSON, now: Date) -> [Date] {
         var dates = [now]
-        for step in 1...12 { dates.append(now.addingTimeInterval(Double(step * 5 * 60))) }
+        if !attendanceInputActive(state, now: now) {
+            for step in 1...12 { dates.append(now.addingTimeInterval(Double(step * 5 * 60))) }
+        }
         let snapshot = data.object("attendance")
         if snapshot.text("date") == HongsiClock.text(now) && !snapshot.objects("active").isEmpty {
             let expiry = Date(timeIntervalSince1970: snapshot.number("checkedAt") / 1000 + attendanceMaxAge)
