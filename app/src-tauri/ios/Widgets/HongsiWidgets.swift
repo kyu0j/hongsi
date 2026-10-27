@@ -245,7 +245,7 @@ struct HongsiWidgetView: View {
         if enteringAttendance { keypad(height: height) }
         else {
             let status = attendanceStatus
-            let badge = ["present", "late", "excused", "absent", "other", "next", "unknown"].contains(status.kind)
+            let badge = ["present", "late", "excused", "absent", "other", "next"].contains(status.kind)
             if status.title.isEmpty {
                 ZStack(alignment: .topLeading) {
                     VStack(spacing: 4) {
@@ -274,6 +274,11 @@ struct HongsiWidgetView: View {
                                 .toggleStyle(WidgetPendingStyle(palette: palette, title: "출석하기", pendingTitle: "확인 중", icon: "tick"))
                                 .frame(width: 108)
 
+                        } else if status.kind == "waiting" {
+                            Button {} label: { Text("확인중").font(.system(size: 15, weight: .semibold)).frame(width: 108, height: 44) }
+                                .buttonStyle(.plain).disabled(true)
+                                .foregroundStyle(palette.onPrimary).background(palette.primary, in: RoundedRectangle(cornerRadius: 12))
+                                .opacity(0.45)
                         } else if badge { attendanceBadge(status) }
                     }.frame(maxHeight: .infinity)
                     if !data.object("attendance").text("receiptError").isEmpty { Text("출석 기록을 불러오지 못했어요.").font(.system(size: 12)).foregroundStyle(palette.muted) }

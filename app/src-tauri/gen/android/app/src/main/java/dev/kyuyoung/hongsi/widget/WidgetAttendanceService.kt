@@ -171,7 +171,7 @@ class WidgetAttendanceService : Service() {
                     WidgetData.merge(context, owner, JSONObject().put("pendingReceipts", JSONArray(pending)))
                     Widgets.ids(context, WidgetKind.ATTENDANCE).forEach { widget ->
                         val s = WidgetData.state(context, widget).put("mode", "ready").put("code", "")
-                        s.put("localReceipt", JSONObject().put("identity", target.text("identity")).put("date", receipt.text("date")).put("kind", receipt.text("kind")))
+                        s.put("localReceipt", JSONObject().put("identity", target.text("identity")).put("date", receipt.text("date")).put("kind", receipt.text("kind")).put("confirmedAt", receipt.optLong("confirmedAt")))
                         WidgetData.save(context, widget, s)
                     }
                     finish(when (receipt.text("kind")) {

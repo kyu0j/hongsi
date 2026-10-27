@@ -151,7 +151,7 @@ internal object WidgetSync {
                         entry.getJSONObject("data")
                     }.toList()
                     patch.put("attendanceCourses", plan.cache)
-                    patch.put("attendance", WidgetAttendanceSnapshot.make(slots, active, courses, receipts, before.optJSONObject("attendance"), checkedAt, courseCheckedAt)
+                    patch.put("attendance", WidgetAttendanceSnapshot.make(slots, active, courses, receipts, checkedAt, courseCheckedAt)
                         .put("timetableLoaded", WidgetData.hasTimetable(before)).put("receiptError", shared.exceptionOrNull()?.message.orEmpty()))
                 }
                 "calendar" -> {

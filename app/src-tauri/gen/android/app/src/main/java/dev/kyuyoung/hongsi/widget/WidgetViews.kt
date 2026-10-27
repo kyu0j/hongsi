@@ -241,7 +241,7 @@ internal object WidgetViews {
             setViewVisibility(R.id.widget_empty_body, if (empty) View.VISIBLE else View.GONE)
             removeAllViews(R.id.widget_body)
             removeAllViews(R.id.widget_empty_body)
-            val badge = value.kind in listOf("present", "late", "excused", "absent", "other", "next", "unknown")
+            val badge = value.kind in listOf("present", "late", "excused", "absent", "other", "next")
             val tone = when (value.tone) {
                 "success" -> R.color.widget_app_ok
                 "error" -> R.color.widget_app_danger
@@ -258,8 +258,13 @@ internal object WidgetViews {
                 if (!empty) {
                     setViewVisibility(R.id.attendance_status_row, if (badge) View.GONE else View.VISIBLE)
                     setViewVisibility(R.id.attendance_status_dot, if (active) View.VISIBLE else View.GONE)
-                    setViewVisibility(R.id.widget_primary, if (value.available) View.VISIBLE else View.GONE)
-                    action(context, id, kind, R.id.widget_primary, "open")
+                    setViewVisibility(R.id.widget_primary, if (active) View.VISIBLE else View.GONE)
+                    text(R.id.widget_primary, if (value.available) "출석하기" else "확인중")
+                    setTextViewCompoundDrawables(R.id.widget_primary, if (value.available) R.drawable.ic_widget_tick_on_primary else 0, 0, 0, 0)
+                    setBoolean(R.id.widget_primary, "setEnabled", value.available)
+                    setFloat(R.id.widget_primary, "setAlpha", if (value.available) 1f else 0.45f)
+                    if (value.available) action(context, id, kind, R.id.widget_primary, "open")
+                    else setOnClickPendingIntent(R.id.widget_primary, null)
                     setViewVisibility(R.id.attendance_badge_area, if (badge) View.VISIBLE else View.GONE)
                     text(R.id.attendance_badge, value.message)
                     themeText(context, R.id.attendance_badge, tone)

@@ -37,7 +37,7 @@ extension HongsiProvider {
             "lecture": ["name": "대학수학(1)", "code": "대학수학(1)", "time": "10:00", "key": "preview"]]] : []
         let data: JSON = ["version": 1, "owner": String(repeating: "0", count: 64), "timetableLoaded": true, "slots": slots,
             "preferences": ["midnight": "prev", "semesterDisplay": "current", "timetableDisplay": "fit"], "semesterDisplay": "current",
-            "attendance": AttendanceSnapshot.make(slots: slots, active: [["name": "대학수학(1)", "code": "대학수학(1)", "time": "월2", "key": "preview"]], courses: [], receipts: previewReceipts, previous: [:], now: now),
+            "attendance": AttendanceSnapshot.make(slots: slots, active: [["name": "대학수학(1)", "code": "대학수학(1)", "time": "월2", "key": "preview"]], courses: [], receipts: previewReceipts, now: now),
             "deadlines": [deadline("preview-1", "실습1", "논리적사고와글쓰기", "assign", "미제출", "#ef4444", "2026-03-10T00:00:00"),
                           deadline("preview-2", "Video Quiz", "전공기초영어", "assign", "제출 완료", "#f59e0b", "2026-03-13T23:59:00"),
                           deadline("preview-3", "8장 단어 퀴즈", "교양일본어", "assign", "미제출", "#3b82f6", "2026-03-14T00:00:00"),

@@ -13,7 +13,7 @@ const KST = 9 * 3600_000;
 const STORE = 'attendance-confirmed';
 
 type TodayClass = ClassSlot & { at: number };
-type Mark = { label: string; kind: MarkKind; source: 'school' | 'app' };
+type Mark = { label: string; kind: MarkKind; source: 'school' | 'app'; at?: number };
 type CourseRef = { code: string | null; name: string; at?: number; lectureKey?: string };
 type SavedReceipt = { receipt: AttendanceReceipt; synced: boolean };
 const LABEL: Partial<Record<MarkKind, string>> = { present: '출석', late: '지각', excused: '공결', absent: '결석' };
@@ -30,7 +30,6 @@ export const classWatch = $state({
   current: null as TodayClass | null,
   nextAt: 0, polling: false, now: Date.now(), day: todayKey(),
   receipts: loadSaved(),
-  seenOpen: [] as string[],
   school: {} as Record<string, { course: AttendanceCourse; at: number }>,
   shareError: '',
 });
@@ -144,26 +143,14 @@ export function markFor(c: CourseRef): Mark | null {
   const receipts = [...(attendanceReceipts.data ?? []), ...classWatch.receipts.map((entry) => entry.receipt)];
   const receipt = receipts.filter((r) => validReceipt(r) && (c.lectureKey === r.lecture.key || keyOf(lectureRef(r.lecture, r.confirmedAt)) === keyOf(c)))
     .sort((a, b) => b.confirmedAt - a.confirmedAt)[0];
-  if (official && (!receipt || school.at > receipt.confirmedAt)) return official;
-  return receipt ? { label: LABEL[receipt.kind]!, kind: receipt.kind, source: 'app' } : official;
+  if (official && (!receipt || school.at > receipt.confirmedAt)) return { ...official, at: school.at };
+  return receipt ? { label: '출석', kind: 'present', source: 'app', at: receipt.confirmedAt } : official;
 }
 export const lectureMark = (l: ActiveLecture) => markFor(lectureRef(l));
-
-function unrecorded(c: CourseRef) {
-  const entry = schoolRecord(c).entry;
-  return entry?.kind === 'planned' || entry?.kind === 'none';
-}
 
 export function sessionState(c: TodayClass): { label: string; cls: string } {
   const m = markFor(c);
   if (m) return { label: m.label, cls: m.kind === 'absent' ? 'danger' : m.kind === 'late' ? 'warn' : isAttended(m) ? 'ok' : '' };
-  const fresh = !lectures.error && lectures.at >= classWatch.now - 2 * POLL_MS;
-  const listed = fresh && lectures.data?.items.some((l) => keyOf(lectureRef(l)) === keyOf(c));
-  if (listed) return { label: '출석 가능', cls: 'primary' };
-  if (unrecorded(c)) return { label: '확인 불가', cls: '' };
-  if (fresh && classWatch.seenOpen.includes(keyOf(c))) return { label: '확인 불가', cls: '' };
-  if (c.at > classWatch.now) return { label: inWindow(c, classWatch.now) ? '확인 중' : '예정', cls: inWindow(c, classWatch.now) ? 'primary' : '' };
-  if (inWindow(c, classWatch.now) && !fresh && !lectures.error) return { label: '확인 중', cls: 'primary' };
   return { label: '확인 불가', cls: '' };
 }
 
@@ -180,8 +167,6 @@ export function attendanceWidgetSnapshot() {
       ...session,
       identity: keyOf(session),
       mark: markFor(session),
-      unrecorded: unrecorded(session),
-      seenOpen: classWatch.seenOpen.includes(keyOf(session)),
     })),
     active: (lectures.data?.items ?? []).map((lecture) => ({
       key: lecture.key, name: lecture.name, time: lecture.time, code: lecture.code,
@@ -297,7 +282,7 @@ function tick(automatic = true) {
   if (classWatch.day !== todayKey()) {
     classWatch.day = todayKey();
     classWatch.receipts = loadSaved();
-    classWatch.school = {}; classWatch.seenOpen = [];
+    classWatch.school = {};
     persist();
   }
   const cur = todaySessions(timetable.data?.slots ?? [], now).find((c) => inWindow(c, now)) ?? null;
@@ -306,11 +291,6 @@ function tick(automatic = true) {
     classWatch.nextAt = Math.max(now, lectures.at + POLL_MS);
   }
   const active = dayKey(lectures.at) === todayKey() ? (lectures.data?.items ?? []) : [];
-  if (!lectures.error && lectures.at >= now - 2 * POLL_MS) {
-    const seen = new Set(classWatch.seenOpen);
-    for (const lecture of active) seen.add(keyOf(lectureRef(lecture)));
-    if (seen.size !== classWatch.seenOpen.length) classWatch.seenOpen = [...seen];
-  }
   if (!automatic || document.visibilityState !== 'visible') return;
   const open = active.filter((lecture) => !isAttended(lectureMark(lecture)));
   if (((cur && !isAttended(markFor(cur))) || open.length || lectures.error !== null) && now >= classWatch.nextAt && !classWatch.polling) void checkNow();
@@ -364,7 +344,7 @@ export function afterSubmit(submission: AttendanceSubmission) {
   return true;
 }
 function resetClassWatch() {
-  classWatch.receipts = loadSaved(); classWatch.school = {}; classWatch.seenOpen = []; classWatch.shareError = '';
+  classWatch.receipts = loadSaved(); classWatch.school = {}; classWatch.shareError = '';
   classWatch.day = todayKey(); classWatch.polling = false; classWatch.current = null; classWatch.nextAt = 0;
   lastShareAt = 0; pendingCheck = null; pendingSync = null; pendingShare = null;
 }

@@ -3,7 +3,7 @@
   import { ApiError, api } from '../../shared/api/api';
   import { attendanceFailureMessage } from '../../shared/api/api-error';
   import { currentLocation } from '../../platform/location';
-  import { POLL_MS, afterSubmit, checkNow, classWatch, isAttended, lectureMark, lectureSession, classScheduleLabel, markFor, markTitle, nextClass, sessionState, todaySessions, useClassWatch } from './classwatch.svelte';
+  import { POLL_MS, afterSubmit, checkNow, classWatch, isAttended, lectureMark, lectureSession, classScheduleLabel, markFor, markTitle, nextClass, todaySessions, useClassWatch } from './classwatch.svelte';
   import { sentenceLines } from '../../shared/utils/format';
   import { errorText, writeBlocked } from '../../shared/api/net.svelte';
   import { attendance, attendanceReceipts, lectures, timetable } from './attendance-resources.svelte';
@@ -45,8 +45,7 @@
   const available = $derived(!!lecture && !isAttended(mark));
   const failed = $derived(!!lectures.error && !available && !mark);
   const nextOnly = $derived(!loading && !failed && !lecture && !current && !!next);
-  const unknown = $derived(!available && !mark && !!watching && sessionState(watching).label === '확인 불가');
-  const waiting = $derived(!loading && !failed && !available && !mark && !!watching && !unknown);
+  const waiting = $derived(!loading && !failed && !available && !mark && !!watching);
   const accent = $derived(available || waiting);
   const slot = $derived(lecture ? lectureSession(lecture) : current ?? (nextOnly ? next : null));
   const schedule = $derived(classScheduleLabel(slot, lecture?.time));
@@ -128,29 +127,18 @@
     </button>
   </div>
   <div class="status-body">
-  {#if available && lecture}
+  {#if available || waiting}
     <div class="card-bottom">
       <div class="class-info">
-        <span class="available-message"><i></i>출석할 수 있어요.</span>
+        <span class="available-message"><i></i>{available ? '출석할 수 있어요.' : '확인중'}</span>
         {#if schedule}<span class="schedule">{schedule}</span>{/if}
       </div>
-      <button class="btn btn-primary attend-button" onclick={() => lecture && startAttend(lecture)} disabled={busy}><Icon name="tick" size={17} />출석하기</button>
+      <button class="btn btn-primary attend-button" onclick={() => lecture && startAttend(lecture)} disabled={!available || busy}>{#if available}<Icon name="tick" size={17} />출석하기{:else}확인중{/if}</button>
     </div>
   {:else if !failed && mark}
     <div class="card-bottom">
       {#if schedule}<span class="schedule">{schedule}</span>{/if}
       <span class="state-badge {badgeTone}">{#if isAttended(mark)}<Icon name={mark.kind === 'late' ? 'clock' : 'tick'} size={14} />{:else if mark.kind === 'absent'}<Icon name="alert" size={14} />{/if}{markTitle(mark)}</span>
-    </div>
-  {:else if waiting}
-    <div class="class-info">
-      <span class="available-message"><i></i>출석 가능 여부 확인 중</span>
-      {#if schedule}<span class="schedule">{schedule}</span>{/if}
-      <span class="small muted">{POLL_MS / 1000}초마다 자동 확인</span>
-    </div>
-  {:else if unknown && !failed}
-    <div class="card-bottom">
-      {#if schedule}<span class="schedule">{schedule}</span>{/if}
-      <span class="state-badge warn">확인 불가</span>
     </div>
   {:else if nextOnly}
     <div class="card-bottom">
@@ -222,7 +210,7 @@
   .available-message { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; }
   .available-message i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
   .schedule { font-size: 12px; color: var(--text-2); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  .attend-button { min-height: 44px; padding: 0 14px; font-size: 15px; border-radius: 12px; gap: 6px; flex: none; margin-left: auto; }
+  .attend-button { min-width: 108px; min-height: 44px; padding: 0 14px; font-size: 15px; border-radius: 12px; gap: 6px; flex: none; margin-left: auto; }
   .state-badge { display: inline-flex; align-items: center; gap: 5px; padding: 7px 9px; border-radius: 9px; background: color-mix(in srgb, #94a3b8 10%, transparent); color: var(--text-2); font-size: 12px; font-weight: 650; white-space: nowrap; margin-left: auto; }
   .state-badge.ok { background: var(--ok-weak); color: var(--ok); }
   .state-badge.warn { background: var(--primary-weak); color: var(--primary-text); }

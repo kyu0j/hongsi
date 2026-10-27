@@ -149,7 +149,7 @@ actor WidgetSync {
                 let courses = cached.values.compactMap { ($0 as? JSON)?["data"] as? JSON }
                 let courseCheckedAt = cached.mapValues { ($0 as? JSON)?.number("checkedAt") ?? 0 }
                 patch["attendanceCourses"] = plan.cache
-                var attendance = AttendanceSnapshot.make(slots: before.objects("slots"), active: active.objects("items"), courses: courses, receipts: receipts + pending, previous: before.object("attendance"), now: checkedAt, courseCheckedAt: courseCheckedAt)
+                var attendance = AttendanceSnapshot.make(slots: before.objects("slots"), active: active.objects("items"), courses: courses, receipts: receipts + pending, now: checkedAt, courseCheckedAt: courseCheckedAt)
                 attendance["timetableLoaded"] = WidgetModel.hasTimetable(before)
                 attendance["receiptError"] = receiptError
                 patch["attendance"] = attendance

@@ -51,7 +51,7 @@ enum AttendanceSnapshot {
             }
         }.sorted { $0.number("at") < $1.number("at") }
     }
-    static func make(slots: [JSON], active: [JSON], courses: [JSON], receipts: [JSON], previous: JSON, now: Date = Date(), courseCheckedAt: JSON = [:]) -> JSON {
+    static func make(slots: [JSON], active: [JSON], courses: [JSON], receipts: [JSON], now: Date = Date(), courseCheckedAt: JSON = [:]) -> JSON {
         let today = HongsiClock.text(now), ms = HongsiClock.milliseconds(now)
         let sessions = sessions(slots: slots, now: now)
         func reference(_ lecture: JSON, at: Double) -> JSON {
@@ -96,20 +96,18 @@ enum AttendanceSnapshot {
             }
             let course = courses.first { sameCourse($0, item) }
             let schoolAt = courseCheckedAt.number(course?.text("code") ?? "", ms)
-            if let entry, !label.isEmpty, receipt == nil || schoolAt > receipt!.number("confirmedAt") { return ["kind": entry.text("kind"), "label": label, "source": "school"] }
-            return receipt.map { ["kind": $0.text("kind"), "label": labels[$0.text("kind")] ?? "", "source": "app"] }
+            if let entry, !label.isEmpty, receipt == nil || schoolAt > receipt!.number("confirmedAt") { return ["kind": entry.text("kind"), "label": label, "source": "school", "at": schoolAt] }
+            return receipt.map { ["kind": "present", "label": "출석", "source": "app", "at": $0.number("confirmedAt")] }
         }
         let opened = active.map { lecture -> JSON in
             let item = reference(lecture, at: ms); var value = lecture
             value["scheduleLabel"] = schedule(lecture, sessions: sessions, now: now)
             value["identity"] = identity(item, now: now); value["mark"] = mark(item) as Any? ?? NSNull(); return value
         }
-        let seen = Set(previous.objects("sessions").filter { $0.flag("seenOpen") }.map { $0.text("identity") } + opened.map { $0.text("identity") })
         return ["date": today, "loaded": true, "error": "", "timetableLoaded": true, "timetableError": "", "checkedAt": ms,
                 "sessions": sessions.map { item -> JSON in
                     var value = item; value["identity"] = identity(item, now: now); value["mark"] = mark(item) as Any? ?? NSNull()
-                    value["unrecorded"] = ["planned", "none"].contains(entry(item)?.text("kind") ?? "")
-                    value["seenOpen"] = seen.contains(identity(item, now: now)); return value
+                    return value
                 }, "active": opened]
     }
 }
@@ -210,26 +208,22 @@ enum WidgetModel {
         data.objects("slots").filter { $0.integer("weekday") == HongsiClock.weekday(now) }.sorted { $0.text("start") < $1.text("start") }
     }
     static func classStates(_ data: JSON, slot: JSON, now: Date) -> [(label: String, tone: String)] {
-        let snapshot = data.object("attendance"), ms = HongsiClock.milliseconds(now)
+        let snapshot = data.object("attendance")
         let sameDay = snapshot.text("date") == HongsiClock.text(now)
-        let fresh = sameDay && snapshot.text("error").isEmpty && ms - snapshot.number("checkedAt") >= 0 && ms - snapshot.number("checkedAt") <= 20_000
         let saved = sameDay ? snapshot.objects("sessions") : []
         let sessions = AttendanceSnapshot.sessions(slots: [slot], now: now)
         return sessions.map { session in
             let at = session.number("at")
             let item = saved.first { AttendanceSnapshot.sameCourse($0, session) && $0.number("at") == at } ?? [:]
-            let mark = item.object("mark"), window = ms >= at - 180_000 && ms <= at + 600_000
-            let listed = fresh && !item.text("identity").isEmpty && snapshot.objects("active").contains { $0.text("identity") == item.text("identity") }
+            let mark = item.object("mark"), kind = markKind(mark)
             let value: (String, String)
-            if !mark.isEmpty { value = (mark.text("label"), mark.text("kind") == "absent" ? "error" : mark.text("kind") == "late" ? "warn" : attended.contains(mark.text("kind")) ? "success" : "muted") }
-            else if listed { value = ("출석 가능", "primary") }
-            else if item.flag("unrecorded") || (fresh && item.flag("seenOpen")) { value = ("확인 불가", "muted") }
-            else if at > ms { value = window ? ("확인 중", "primary") : ("예정", "muted") }
-            else if window && !fresh && snapshot.text("error").isEmpty { value = ("확인 중", "primary") }
+            if !mark.isEmpty { value = (markLabel(mark), kind == "absent" ? "error" : kind == "late" ? "warn" : attended.contains(kind) ? "success" : "muted") }
             else { value = ("확인 불가", "muted") }
             return (sessions.count > 1 ? "\(session.integer("round"))회차 " + value.0 : value.0, value.1)
         }
     }
+    private static func markKind(_ mark: JSON) -> String { mark.text("source") == "app" ? "present" : mark.text("kind") }
+    private static func markLabel(_ mark: JSON) -> String { mark.text("source") == "app" ? "출석" : mark.text("label") }
     static func deadlineDay(_ item: JSON, data: JSON) -> Int {
         let due = item.number("due"), previous = data.object("preferences").text("midnight", "prev") != "same" && HongsiClock.text(Date(timeIntervalSince1970: due), "HH:mm") == "00:00"
         return Int(floor((due + 32400 - (previous ? 60 : 0)) / 86400))
@@ -260,42 +254,36 @@ enum WidgetModel {
         let age = ms - snapshot.number("checkedAt")
         let sessions = sameDay ? snapshot.objects("sessions") : []
         let current = sessions.first { ms >= $0.number("at") - 180_000 && ms <= $0.number("at") + 600_000 }
-        let fresh = snapshot.text("error").isEmpty && sameDay && age >= 0 && age <= 20_000
         let active = sameDay && age >= 0 && age < attendanceMaxAge * 1000 ? snapshot.objects("active") : []
-        func success(_ value: AttendanceStatus) -> AttendanceStatus {
+        func success(_ value: AttendanceStatus, mark: JSON = [:]) -> AttendanceStatus {
             let receipt = state.object("localReceipt")
             guard receipt.text("identity") == value.identity, !value.identity.isEmpty, receipt.text("date") == HongsiClock.text(now) else { return value }
-            var result = value; result.kind = receipt.text("kind"); result.available = false
-            result.message = result.kind == "late" ? "지각 처리됨" : result.kind == "excused" ? "공결 처리됨" : "출석 완료"
-            result.tone = result.kind == "late" ? "warn" : "success"; return result
+            if mark.text("source") == "school" && mark.number("at") > receipt.number("confirmedAt") { return value }
+            var result = value; result.kind = "present"; result.available = false
+            result.message = "출석 완료"; result.tone = "success"; return result
         }
         func marked(_ item: JSON, _ mark: JSON) -> AttendanceStatus {
-            let kind = mark.text("kind")
-            return AttendanceStatus(title: item.text("name"), message: kind == "present" ? "출석 완료" : mark.text("label") + " 처리됨",
+            let kind = markKind(mark)
+            return AttendanceStatus(title: item.text("name"), message: kind == "present" ? "출석 완료" : markLabel(mark) + " 처리됨",
                 detail: AttendanceSnapshot.schedule(item, sessions: sessions, now: now), tone: ["present", "excused"].contains(kind) ? "success" : kind == "absent" ? "error" : kind == "late" ? "warn" : "muted", identity: item.text("identity"), kind: kind)
         }
         if let opened = active.first(where: { !attended.contains($0.object("mark").text("kind")) }) {
-            return success(AttendanceStatus(title: opened.text("name"), message: "출석할 수 있어요.", detail: AttendanceSnapshot.schedule(opened, sessions: sessions, now: now), available: true, tone: "primary", identity: opened.text("identity"), kind: "available"))
+            return success(AttendanceStatus(title: opened.text("name"), message: "출석할 수 있어요.", detail: AttendanceSnapshot.schedule(opened, sessions: sessions, now: now), available: true, tone: "primary", identity: opened.text("identity"), kind: "available"), mark: opened.object("mark"))
         }
         if let current {
-            if !current.object("mark").isEmpty { return marked(current, current.object("mark")) }
-            var status = success(AttendanceStatus(title: current.text("name"), message: "출석 가능 여부 확인 중", detail: AttendanceSnapshot.schedule(current, now: now), tone: "primary", identity: current.text("identity"), kind: "waiting"))
+            if !current.object("mark").isEmpty { return success(marked(current, current.object("mark")), mark: current.object("mark")) }
+            var status = success(AttendanceStatus(title: current.text("name"), message: "확인중", detail: AttendanceSnapshot.schedule(current, now: now), tone: "primary", identity: current.text("identity"), kind: "waiting"))
             if status.kind != "waiting" { return status }
             if !snapshot.text("error").isEmpty { status.message = "출석 정보를 불러오지 못했어요."; status.tone = "error"; status.kind = "error" }
-            else if !fresh { status.message = "출석 정보를 확인해 주세요."; status.tone = "warn"; status.kind = "stale" }
-            else if current.flag("seenOpen") || ms >= current.number("at") { status.message = "확인 불가"; status.tone = "warn"; status.kind = "unknown" }
             return status
         }
-        if let item = active.first, !item.object("mark").isEmpty { return marked(item, item.object("mark")) }
+        if let item = active.first, !item.object("mark").isEmpty { return success(marked(item, item.object("mark")), mark: item.object("mark")) }
         if !snapshot.text("error").isEmpty || !snapshot.text("timetableError").isEmpty { return AttendanceStatus(message: "출석 정보를 불러오지 못했어요.", tone: "error", kind: "error") }
         if !snapshot.flag("timetableLoaded") { return AttendanceStatus(message: "시간표를 확인해 주세요.", detail: "앱에서 시간표를 한 번 불러와 주세요.") }
         if snapshot.text("date") != HongsiClock.text(now) { return AttendanceStatus(message: "출석 정보를 확인해 주세요.", detail: "새로고침을 눌러 주세요.") }
         if sessions.isEmpty { return AttendanceStatus(message: "오늘은 수업이 없어요.") }
         if let next = sessions.first(where: { $0.number("at") > ms }) { return AttendanceStatus(title: next.text("name"), message: "다음 수업", detail: AttendanceSnapshot.schedule(next, now: now), kind: "next") }
-        if let item = sessions.last(where: { ms >= $0.number("at") && ms < $0.number("at") + 3_600_000 }) {
-            if !item.object("mark").isEmpty { return marked(item, item.object("mark")) }
-            return success(AttendanceStatus(title: item.text("name"), message: "확인 불가", detail: AttendanceSnapshot.schedule(item, now: now), tone: "warn", identity: item.text("identity"), kind: "unknown"))
-        }
+        if sessions.contains(where: { ms < $0.number("at") + 3_600_000 }) { return AttendanceStatus(message: "출석할 수업이 없어요.") }
         return AttendanceStatus(message: "오늘 수업이 모두 끝났어요.")
     }
 }

@@ -69,24 +69,22 @@ internal object AttendanceState {
         val sessions = snapshot.array("sessions").takeIf { sameDay }.orEmpty()
         val current = sessions.firstOrNull { now in (it.optLong("at") - 180_000)..(it.optLong("at") + 600_000) }
         val next = sessions.firstOrNull { it.optLong("at") > now }
-        val fresh = snapshot.text("error").isBlank() && sameDay && age in 0..20_000
         val active = if (sameDay && age in 0 until ACTIVE_MAX_AGE) snapshot.array("active") else emptyList()
         val open = active.firstOrNull { it.optJSONObject("mark")?.text("kind") !in attended }
         if (open != null) {
-            return withSuccess(state, WidgetAttendance(open.text("name"), "출석할 수 있어요.", schedule(open, sessions), true, "primary", open.text("identity"), "available"), today)
+            return withSuccess(state, WidgetAttendance(open.text("name"), "출석할 수 있어요.", schedule(open, sessions), true, "primary", open.text("identity"), "available"), today, open.optJSONObject("mark"))
         }
         if (current != null) {
-            current.optJSONObject("mark")?.let { return marked(current, it) }
-            val base = WidgetAttendance(current.text("name"), "출석 가능 여부 확인 중", schedule(current), tone = "primary", identity = current.text("identity"), kind = "waiting")
+            current.optJSONObject("mark")?.let { return withSuccess(state, marked(current, it), today, it) }
+            val base = WidgetAttendance(current.text("name"), "확인중", schedule(current), tone = "primary", identity = current.text("identity"), kind = "waiting")
             val confirmed = withSuccess(state, base, today)
             if (confirmed != base) return confirmed
             if (snapshot.text("error").isNotBlank()) return base.copy(message = "출석 정보를 불러오지 못했어요.", tone = "error", kind = "error")
-            if (!fresh) return base.copy(message = "출석 정보를 확인해 주세요.", tone = "warn", kind = "stale")
-            return if (current.optBoolean("seenOpen") || now >= current.optLong("at")) base.copy(message = "확인 불가", tone = "warn", kind = "unknown") else base
+            return base
         }
         if (active.isNotEmpty()) {
             val item = active.first()
-            item.optJSONObject("mark")?.let { return marked(item, it, sessions) }
+            item.optJSONObject("mark")?.let { return withSuccess(state, marked(item, it, sessions), today, it) }
         }
         if (snapshot.text("error").isNotBlank() || snapshot.text("timetableError").isNotBlank()) return WidgetAttendance(message = "출석 정보를 불러오지 못했어요.", tone = "error", kind = "error")
         if (!snapshot.optBoolean("timetableLoaded")) return WidgetAttendance(message = "시간표를 확인해 주세요.", detail = "앱에서 시간표를 한 번 불러와 주세요.")
@@ -94,43 +92,33 @@ internal object AttendanceState {
         if (!sameDay) return WidgetAttendance(message = "출석 정보를 확인해 주세요.", detail = "새로고침을 눌러 주세요.")
         if (sessions.isEmpty()) return WidgetAttendance(message = "오늘은 수업이 없어요.")
         if (next != null) return WidgetAttendance(next.text("name"), "다음 수업", schedule(next), kind = "next")
-        val inClass = sessions.lastOrNull { now in it.optLong("at") until (it.optLong("at") + 3600_000) }
-        if (inClass != null) {
-            inClass.optJSONObject("mark")?.let { return marked(inClass, it) }
-            return withSuccess(state, WidgetAttendance(inClass.text("name"), "확인 불가", schedule(inClass), tone = "warn", identity = inClass.text("identity"), kind = "unknown"), today)
-        }
+        if (sessions.any { now < it.optLong("at") + 3600_000 }) return WidgetAttendance(message = "출석할 수업이 없어요.")
         return WidgetAttendance(message = "오늘 수업이 모두 끝났어요.")
     }
     fun classStates(data: JSONObject, slot: JSONObject, now: Long = System.currentTimeMillis()): List<Pair<String, String>> {
         val snapshot = data.optJSONObject("attendance") ?: JSONObject()
         val sameDay = snapshot.text("date") == dateText(now / 1000)
-        val fresh = sameDay && snapshot.text("error").isBlank() && now - snapshot.optLong("checkedAt") in 0..20_000
         val saved = snapshot.array("sessions").takeIf { sameDay }.orEmpty()
         val sessions = WidgetAttendanceSnapshot.sessions(listOf(slot), now)
         return sessions.map { session ->
             val at = session.optLong("at")
             val item = saved.firstOrNull { sameCourse(it, session) && it.optLong("at") == at }
             val mark = item?.optJSONObject("mark")
-            val window = now >= at - 180_000 && now <= at + 600_000
-            val listed = fresh && item != null && snapshot.array("active").any { it.text("identity") == item.text("identity") }
-            val state = when {
-                mark != null -> mark.text("label") to when (mark.text("kind")) { "absent" -> "danger"; "late" -> "warn"; "present", "excused" -> "ok"; else -> "muted" }
-                listed -> "출석 가능" to "primary"
-                item?.optBoolean("unrecorded") == true || (fresh && item?.optBoolean("seenOpen") == true) -> "확인 불가" to "muted"
-                at > now -> if (window) "확인 중" to "primary" else "예정" to "muted"
-                window && !fresh && snapshot.text("error").isBlank() -> "확인 중" to "primary"
-                else -> "확인 불가" to "muted"
-            }
+            val state = if (mark != null) markLabel(mark) to when (markKind(mark)) { "absent" -> "danger"; "late" -> "warn"; "present", "excused" -> "ok"; else -> "muted" }
+                else "확인 불가" to "muted"
             (if (sessions.size > 1) "${session.optInt("round")}회차 ${state.first}" else state.first) to state.second
         }
     }
+    private fun markKind(mark: JSONObject) = if (mark.text("source") == "app") "present" else mark.text("kind")
+    private fun markLabel(mark: JSONObject) = if (mark.text("source") == "app") "출석" else mark.text("label")
     private fun marked(item: JSONObject, mark: JSONObject, sessions: List<JSONObject> = emptyList()): WidgetAttendance {
-        val kind = mark.text("kind")
-        val title = if (kind == "present") "출석 완료" else "${mark.text("label")} 처리됨"
+        val kind = markKind(mark)
+        val title = if (kind == "present") "출석 완료" else "${markLabel(mark)} 처리됨"
         return WidgetAttendance(item.text("name"), title, schedule(item, sessions), tone = when (kind) { "present", "excused" -> "success"; "absent" -> "error"; "late" -> "warn"; else -> "muted" }, identity = item.text("identity"), kind = kind)
     }
-    private fun withSuccess(state: JSONObject, value: WidgetAttendance, today: String): WidgetAttendance {
+    private fun withSuccess(state: JSONObject, value: WidgetAttendance, today: String, mark: JSONObject? = null): WidgetAttendance {
         val receipt = state.optJSONObject("localReceipt") ?: return value
-        return if (receipt.text("identity") == value.identity && receipt.text("date") == today) value.copy(message = if (receipt.text("kind") == "late") "지각 처리됨" else if (receipt.text("kind") == "excused") "공결 처리됨" else "출석 완료", available = false, tone = if (receipt.text("kind") == "late") "warn" else "success", kind = receipt.text("kind", "present")) else value
+        if (mark?.text("source") == "school" && mark.optLong("at") > receipt.optLong("confirmedAt")) return value
+        return if (value.identity.isNotBlank() && receipt.text("identity") == value.identity && receipt.text("date") == today) value.copy(message = "출석 완료", available = false, tone = "success", kind = "present") else value
     }
 }

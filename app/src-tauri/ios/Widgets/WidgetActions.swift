@@ -120,7 +120,7 @@ actor WidgetActions {
         try WidgetStore.merge(owner: owner, patch: ["pendingReceipts": pending])
         try WidgetStore.changeState(owner: owner) {
             $0["mode"] = "ready"; $0["code"] = ""; $0["message"] = receipt.text("kind") == "late" ? "지각으로 처리됐어요." : "출석 확인이 완료되었습니다."
-            $0["localReceipt"] = ["identity": lecture.text("identity"), "date": receipt.text("date"), "kind": receipt.text("kind")]
+            $0["localReceipt"] = ["identity": lecture.text("identity"), "date": receipt.text("date"), "kind": receipt.text("kind"), "confirmedAt": receipt.number("confirmedAt")]
         }
         try WidgetStore.markChanged(owner: owner)
         await WidgetSync.shared.refresh("ATTENDANCE", force: true)

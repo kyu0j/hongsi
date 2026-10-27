@@ -22,7 +22,7 @@ internal object WidgetAttendanceSnapshot {
             }
         }.sortedBy { it.optLong("at") }
     }
-    fun make(slots: List<JSONObject>, active: List<JSONObject>, courses: List<JSONObject>, receipts: List<JSONObject>, previous: JSONObject?, checkedAt: Long = System.currentTimeMillis(), courseCheckedAt: JSONObject = JSONObject()): JSONObject {
+    fun make(slots: List<JSONObject>, active: List<JSONObject>, courses: List<JSONObject>, receipts: List<JSONObject>, checkedAt: Long = System.currentTimeMillis(), courseCheckedAt: JSONObject = JSONObject()): JSONObject {
         val now = checkedAt
         val sessions = sessions(slots, now)
         fun ref(lecture: JSONObject, at: Long = now): JSONObject {
@@ -66,16 +66,15 @@ internal object WidgetAttendanceSnapshot {
             }
             val course = courses.singleOrNull { sameCourse(it, item) }
             val schoolAt = courseCheckedAt.optLong(course?.text("code").orEmpty(), checkedAt)
-            if (!label.isNullOrBlank() && (receipt == null || schoolAt > receipt.optLong("confirmedAt"))) return JSONObject().put("kind", entry.text("kind")).put("label", label).put("source", "school")
-            return receipt?.let { JSONObject().put("kind", it.text("kind")).put("label", labels[it.text("kind")]).put("source", "app") }
+            if (!label.isNullOrBlank() && (receipt == null || schoolAt > receipt.optLong("confirmedAt"))) return JSONObject().put("kind", entry.text("kind")).put("label", label).put("source", "school").put("at", schoolAt)
+            return receipt?.let { JSONObject().put("kind", "present").put("label", "출석").put("source", "app").put("at", it.optLong("confirmedAt")) }
         }
         val opened = active.map { lecture ->
             val item = ref(lecture)
             JSONObject(lecture.toString()).put("scheduleLabel", AttendanceState.schedule(lecture, sessions)).put("identity", identity(item)).put("mark", mark(item) ?: JSONObject.NULL)
         }
-        val seen = (previous?.array("sessions").orEmpty().filter { it.optBoolean("seenOpen") }.map { it.text("identity") } + opened.map { it.text("identity") }).toSet()
         return JSONObject().put("date", dateText()).put("loaded", true).put("error", "").put("timetableLoaded", true).put("timetableError", "").put("checkedAt", now)
-            .put("sessions", JSONArray(sessions.map { it.put("identity", identity(it)).put("mark", mark(it) ?: JSONObject.NULL).put("unrecorded", entry(it)?.text("kind") in listOf("planned", "none")).put("seenOpen", seen.contains(identity(it))) }))
+            .put("sessions", JSONArray(sessions.map { it.put("identity", identity(it)).put("mark", mark(it) ?: JSONObject.NULL) }))
             .put("active", JSONArray(opened))
     }
 }
