@@ -412,7 +412,11 @@ fn reminders(state: &ReminderState, seat_leads: &[i32], account: &str) -> Vec<Re
                     seat.expires_at.timestamp()
                 ),
                 seat.expires_at.timestamp() - i64::from(*lead) * 60,
-                &format!("좌석 이용 종료까지 {lead}분 남았어요."),
+                &if *lead == 0 {
+                    "좌석 이용 시간이 끝났어요.".to_owned()
+                } else {
+                    format!("좌석 이용 종료까지 {lead}분 남았어요.")
+                },
                 "",
                 account,
                 json!({"kind":"seat","id":seat.id}),

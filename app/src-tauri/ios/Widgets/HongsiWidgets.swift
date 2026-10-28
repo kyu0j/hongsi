@@ -298,8 +298,7 @@ struct HongsiWidgetView: View {
         let code = entry.state.text("code")
         let symbols = (0..<4).map { $0 < code.count ? String(Array(code)[$0]) : "–" }.joined(separator: "  ")
         let busy = entry.state.flag("pending") && HongsiClock.milliseconds(entry.date) - entry.state.number("pendingAt") < 45_000
-        let message = entry.state.text("message")
-        let keyHeight = max(24, (height - 54 - (message.isEmpty ? 0 : 14) - 8) / 2)
+        let keyHeight = max(24, (height - 54 - 8) / 2)
         return VStack(spacing: 0) {
             HStack(spacing: 0) {
                 Button(intent: intent("back")) { Text("‹").font(.system(size: 24)).frame(width: 58, height: 54) }.buttonStyle(.plain).accessibilityLabel("출결 입력 닫기")
@@ -326,7 +325,6 @@ struct HongsiWidgetView: View {
                     }
                 }.padding(2)
             }
-            if !message.isEmpty { Text(message).font(.system(size: 10)).foregroundStyle(palette.warning).lineLimit(1).minimumScaleFactor(0.7).frame(height: 14) }
         }
     }
     @ViewBuilder private var seat: some View {
@@ -370,7 +368,6 @@ struct HongsiWidgetView: View {
                         .background(Color(hex: palette.dark ? "202730" : "f7f8fa"), in: RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color(hex: palette.dark ? "303945" : "e4e8ed"), lineWidth: 1))
                 }.font(.system(size: 15, weight: .semibold)).padding(.top, 8)
-                if entry.state.integer("seatMessageId") == seat.integer("id"), !extending, !entry.state.text("seatMessage").isEmpty { Text(entry.state.text("seatMessage")).font(.system(size: 10)).foregroundStyle(palette.muted).lineLimit(1).minimumScaleFactor(0.7) }
             }
         }
     }

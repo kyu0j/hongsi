@@ -1,6 +1,7 @@
 import AppIntents
 import Foundation
 import OSLog
+import UserNotifications
 import WidgetKit
 
 struct HongsiWidgetAction: AppIntent {
@@ -55,11 +56,11 @@ actor WidgetActions {
                     throw WidgetFailure("출석 가능 여부를 다시 확인해 주세요.")
                 }
                 try WidgetStore.changeState(owner: owner) {
-                    $0["mode"] = "input"; $0["code"] = ""; $0["lecture"] = lecture; $0["inputAt"] = HongsiClock.milliseconds(); $0["message"] = ""
+                    $0["mode"] = "input"; $0["code"] = ""; $0["lecture"] = lecture; $0["inputAt"] = HongsiClock.milliseconds()
                 }
             } else if action == "back" {
                 try WidgetStore.changeState(owner: owner) {
-                    $0["mode"] = "ready"; $0["code"] = ""; $0["message"] = ""
+                    $0["mode"] = "ready"; $0["code"] = ""
                     $0["interactionAt"] = HongsiClock.milliseconds()
                 }
             } else if action == "digit" || action == "erase" {
@@ -68,19 +69,31 @@ actor WidgetActions {
                     let code = state.text("code")
                     if action == "erase" { state["code"] = String(code.dropLast()) }
                     else if detail.count == 1, detail.first?.isASCII == true, detail.first?.isNumber == true, code.count < 4 { state["code"] = code + detail }
-                    state["message"] = ""
                 }
             } else if action == "submit" {
                 submitting = true; defer { submitting = false }
                 try await submit(owner: owner, inputAt: inputAt)
             }
         } catch {
-            try? WidgetStore.changeState(owner: owner) {
-                $0[kind == "SEAT" ? "seatMessage" : "message"] = (error as? WidgetFailure)?.errorDescription ?? "다시 시도해 주세요."
-                if kind == "SEAT" { $0["seatMessageId"] = Int(detail.split(separator: ":").first ?? "") ?? 0 }
-                else { $0["pending"] = false; $0["interactionAt"] = HongsiClock.milliseconds() }
+            if kind == "ATTENDANCE" {
+                try? WidgetStore.changeState(owner: owner) {
+                    $0["pending"] = false; $0["interactionAt"] = HongsiClock.milliseconds()
+                }
             }
+            await notify(owner: owner, kind: kind, message: (error as? WidgetFailure)?.errorDescription ?? "다시 시도해 주세요.")
         }
+    }
+    private func notify(owner: String, kind: String, message: String) async {
+        let center = UNUserNotificationCenter.current()
+        let authorization = await center.notificationSettings().authorizationStatus
+        guard authorization == .authorized || authorization == .provisional,
+              WidgetStore.read().text("owner") == owner else { return }
+        let content = UNMutableNotificationContent()
+        content.title = message; content.sound = .default
+        let identifier = kind == "SEAT" ? "8602" : "8603"
+        center.removeDeliveredNotifications(withIdentifiers: [identifier])
+        do { try await center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: nil)) }
+        catch { NSLog("HongsiWidget: feedback notification failed (%@)", String(describing: type(of: error))) }
     }
     private func validateInput(_ state: JSON, inputAt: Double) throws {
         guard WidgetModel.attendanceInputActive(state, now: Date()), state.number("inputAt") == inputAt else {
@@ -93,7 +106,7 @@ actor WidgetActions {
         guard code.count == 4, code.allSatisfy({ $0.isASCII && $0.isNumber }), !lecture.text("key").isEmpty else { throw WidgetFailure("출석번호 네 자리를 입력해 주세요.") }
         try WidgetStore.changeState(owner: owner) {
             guard $0.number("claimedInput") != inputAt else { throw WidgetFailure("출석 상태를 먼저 확인해 주세요.") }
-            $0["claimedInput"] = inputAt; $0["pending"] = true; $0["pendingAt"] = HongsiClock.milliseconds(); $0["message"] = "출석을 확인하고 있어요."
+            $0["claimedInput"] = inputAt; $0["pending"] = true; $0["pendingAt"] = HongsiClock.milliseconds()
         }
         var sent = false
         defer {
@@ -119,10 +132,12 @@ actor WidgetActions {
         pending.append(receipt)
         try WidgetStore.merge(owner: owner, patch: ["pendingReceipts": pending])
         try WidgetStore.changeState(owner: owner) {
-            $0["mode"] = "ready"; $0["code"] = ""; $0["message"] = receipt.text("kind") == "late" ? "지각으로 처리됐어요." : "출석 확인이 완료되었습니다."
+            $0["mode"] = "ready"; $0["code"] = ""
             $0["localReceipt"] = ["identity": lecture.text("identity"), "date": receipt.text("date"), "kind": receipt.text("kind"), "confirmedAt": receipt.number("confirmedAt")]
         }
         try WidgetStore.markChanged(owner: owner)
+        let message = receipt.text("kind") == "late" ? "지각으로 처리됐어요." : receipt.text("kind") == "excused" ? "공결로 처리됐어요." : "출석 확인이 완료되었습니다."
+        await notify(owner: owner, kind: "ATTENDANCE", message: message)
         await WidgetSync.shared.refresh("ATTENDANCE", force: true)
     }
     @MainActor private func locate() async throws -> (Double, Double) {
@@ -136,7 +151,6 @@ actor WidgetActions {
         try WidgetStore.changeState(owner: owner) {
             guard !WidgetModel.seatExtending($0, seat: ["id": id], now: Date()) else { throw WidgetFailure("연장 중이에요.") }
             $0["seatPending"] = true; $0["seatPendingAt"] = HongsiClock.milliseconds(); $0["seatPendingId"] = id
-            $0["seatMessage"] = ""; $0["seatMessageId"] = id
         }
         WidgetCenter.shared.reloadTimelines(ofKind: "SEAT")
         defer {
@@ -166,8 +180,7 @@ actor WidgetActions {
         var message = "이용 시간을 연장했어요."
         do { try await WidgetReminders.shared.rebuild(owner: owner, channel: "seat") }
         catch { message = "연장 후 알림을 갱신하지 못했어요." }
-        let finalMessage = message
-        try WidgetStore.changeState(owner: owner) { $0["seatMessage"] = finalMessage }
         try WidgetStore.markChanged(owner: owner)
+        await notify(owner: owner, kind: "SEAT", message: message)
     }
 }
