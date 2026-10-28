@@ -74,7 +74,8 @@ internal object WidgetSync {
                             .put("midnight", if (saved.text("midnight") == "same") "same" else "prev")
                             .put("showUndated", saved.optBoolean("showUndatedAssignments"))
                             .put("timetableDisplay", if (saved.text("timetableDisplay") == "full") "full" else "fit")
-                            .put("semesterDisplay", WidgetData.semesterDisplay(saved.text("semesterDisplay"))))
+                            .put("semesterDisplay", WidgetData.semesterDisplay(saved.text("semesterDisplay")))
+                            .put("alertLeads", saved.optJSONArray("alertLeads") ?: JSONArray().put(60)))
                         updated.put("preferences", saved.optLong("updatedAt"))
                         applied.put("preferences", revisions.optLong("preferences"))
                     } else complete = false
@@ -117,6 +118,7 @@ internal object WidgetSync {
         val patch = JSONObject()
         val updated = JSONObject()
         var requestPath = ""
+        var refreshed = false
         fun get(path: String): Any {
             requestPath = path.substringBefore('?')
             return WidgetNative.api(context, path, owner = owner).body()
@@ -155,6 +157,7 @@ internal object WidgetSync {
                         .put("timetableLoaded", WidgetData.hasTimetable(before)).put("receiptError", shared.exceptionOrNull()?.message.orEmpty()))
                 }
                 "calendar" -> {
+                    val requestedAt = System.currentTimeMillis()
                     val display = WidgetData.semesterDisplay(before.optJSONObject("preferences")?.text("semesterDisplay").orEmpty())
                     val data = get("/api/calendar?refresh=${if (force) 1 else 0}&semester=$display") as JSONObject
                     val todos = (get("/api/todos") as JSONArray).objects()
@@ -173,22 +176,30 @@ internal object WidgetSync {
                     fun course(id: Long) = courses.firstOrNull { it.optLong("id") == id }?.text("name").orEmpty()
                     val statuses = mapOf("submitted" to "제출 완료", "not_submitted" to "미제출", "overdue" to "마감 지남", "done" to "출석 인정", "partial" to "부분 인정", "missed" to "미인정", "todo" to "미시청", "upcoming" to "시청 전")
                     val items = data.array("items").map { item ->
-                        JSONObject().apply { listOf("key", "title", "due", "start", "done", "kind").forEach { put(it, item.opt(it) ?: JSONObject.NULL) } }
+                        JSONObject().apply { listOf("key", "title", "due", "start", "done", "kind", "alert", "alertLeads").forEach { put(it, item.opt(it) ?: JSONObject.NULL) } }
                             .put("course", course(item.optLong("courseId"))).put("color", colors[item.optLong("courseId")] ?: "#3b82f6").put("status", statuses[item.text("status")] ?: "상태 확인 필요")
                     } + todos.filter { display == "all" || it.isNull("courseId") || it.optLong("courseId") in courseIds }.map { todo ->
                         JSONObject().put("key", "todo:${todo.optLong("id")}").put("title", todo.text("title"))
                             .put("course", course(todo.optLong("courseId")).ifBlank { "공통" }).put("color", colors[todo.optLong("courseId")] ?: JSONObject.NULL)
                             .put("due", todo.opt("due") ?: JSONObject.NULL).put("allDay", todo.optBoolean("allDay"))
                             .put("done", !todo.isNull("doneAt")).put("kind", "todo").put("status", "")
+                            .put("alert", todo.opt("notify") ?: JSONObject.NULL).put("alertLeads", todo.opt("alertLeads") ?: JSONObject.NULL)
+                            .put("reminderCourse", course(todo.optLong("courseId")))
                     }
                     patch.put("deadlines", JSONArray(items))
                     patch.put("semesterDisplay", display)
+                    updated.put("calendar", requestedAt)
                 }
-                "seats" -> patch.put("seat", (get("/api/seats/session") as JSONObject).opt("session") ?: JSONObject.NULL)
+                "seats" -> {
+                    val requestedAt = System.currentTimeMillis()
+                    patch.put("seat", (get("/api/seats/session") as JSONObject).opt("session") ?: JSONObject.NULL)
+                    updated.put("seats", requestedAt)
+                }
             }
             if (resource != "timetable" && !updated.has(resource)) updated.put(resource, System.currentTimeMillis())
             patch.put("updatedAt", updated)
             patch.put("errors", JSONObject().put(resource, ""))
+            refreshed = true
         } catch (e: Exception) {
             val failure = e as? WidgetFailure
             val code = failure?.code?.takeIf { it.matches(Regex("[a-z_]{1,64}")) }.orEmpty()
@@ -198,7 +209,13 @@ internal object WidgetSync {
             patch.put("errors", JSONObject().put(resource, message))
             if (resource == "lectures") patch.put("attendance", (before.optJSONObject("attendance") ?: JSONObject()).put("error", message))
         } finally {
-            try { WidgetData.merge(context, owner, patch) }
+            try {
+                val applied = WidgetData.merge(context, owner, patch)
+                if (refreshed && applied && resource in setOf("seats", "calendar")) {
+                    runCatching { WidgetReminders.rebuild(context, owner, if (resource == "seats") "seat" else "due") }
+                        .onFailure { Log.w("HongsiWidget", "reminder refresh failed: ${it.javaClass.simpleName}") }
+                }
+            }
             finally { lock.unlock() }
         }
     }

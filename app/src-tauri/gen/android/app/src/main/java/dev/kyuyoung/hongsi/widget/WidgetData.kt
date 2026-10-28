@@ -58,6 +58,7 @@ object WidgetData {
                 preferences.put("showUndated", current.optJSONObject("preferences")?.optBoolean("showUndated") ?: false)
                 preferences.put("timetableDisplay", current.optJSONObject("preferences")?.text("timetableDisplay", "fit") ?: "fit")
                 preferences.put("semesterDisplay", current.optJSONObject("preferences")?.text("semesterDisplay", "current") ?: "current")
+                preferences.put("alertLeads", current.optJSONObject("preferences")?.optJSONArray("alertLeads") ?: JSONArray().put(60))
                 next.put("preferences", preferences)
                 times.put("preferences", oldTimes.optLong("preferences"))
             }
@@ -95,6 +96,14 @@ object WidgetData {
         val next = read(context)
         if (owner.isBlank() || next.text("owner") != owner) return false
         discardOlderAttendance(next, patch)
+        for ((field, resource) in mapOf("seat" to "seats", "deadlines" to "calendar")) {
+            if (patch.has(field) && (patch.optJSONObject("updatedAt")?.optLong(resource) ?: 0) < (next.optJSONObject("updatedAt")?.optLong(resource) ?: 0)) {
+                patch.remove(field)
+                if (field == "deadlines") patch.remove("semesterDisplay")
+                patch.optJSONObject("updatedAt")?.remove(resource)
+                patch.optJSONObject("errors")?.remove(resource)
+            }
+        }
         if (patch.has("slots") && (patch.optJSONObject("updatedAt")?.optLong("timetable") ?: 0) < (next.optJSONObject("updatedAt")?.optLong("timetable") ?: 0)) {
             patch.remove("slots")
             patch.remove("timetableLoaded")

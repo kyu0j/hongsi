@@ -96,7 +96,7 @@ enum WidgetStore {
                 let oldTimes = previous.object("updatedAt")
                 if oldTimes.number("preferences") > times.number("preferences") {
                     var preferences = next.object("preferences")
-                    for key in ["midnight", "showUndated", "timetableDisplay", "semesterDisplay"] { preferences[key] = previous.object("preferences")[key] }
+                    for key in ["midnight", "showUndated", "timetableDisplay", "semesterDisplay", "alertLeads"] { preferences[key] = previous.object("preferences")[key] }
                     next["preferences"] = preferences; times["preferences"] = oldTimes["preferences"]
                 }
                 let display = next.object("preferences").text("semesterDisplay", "current")
@@ -140,10 +140,13 @@ enum WidgetStore {
                 }
                 patch["commonCheckedAt"] = 0
             }
-            if patch["seat"] != nil && patch.object("updatedAt").number("seats") < data.object("updatedAt").number("seats") {
-                patch.removeValue(forKey: "seat")
-                for key in ["updatedAt", "errors"] {
-                    var values = patch.object(key); values.removeValue(forKey: "seats"); patch[key] = values
+            for (field, resource) in [("seat", "seats"), ("deadlines", "calendar")] {
+                if patch[field] != nil && patch.object("updatedAt").number(resource) < data.object("updatedAt").number(resource) {
+                    patch.removeValue(forKey: field)
+                    if field == "deadlines" { patch.removeValue(forKey: "semesterDisplay") }
+                    for key in ["updatedAt", "errors"] {
+                        var values = patch.object(key); values.removeValue(forKey: resource); patch[key] = values
+                    }
                 }
             }
             let currentDisplay = data.object("preferences").text("semesterDisplay", "current")

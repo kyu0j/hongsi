@@ -1,6 +1,5 @@
 import Foundation
 import WidgetKit
-import UserNotifications
 
 enum WidgetAPI {
     private static let queue = DispatchQueue(label: "dev.kyuyoung.hongsi.widget.network", qos: .userInitiated)
@@ -82,7 +81,7 @@ private actor WidgetCommonSync {
             if let saved = try? await fetch("/api/preferences"), saved.number("updatedAt") >= before.object("updatedAt").number("preferences") {
                 patch["preferences"] = ["midnight": saved.text("midnight") == "same" ? "same" : "prev",
                     "showUndated": saved.flag("showUndatedAssignments"), "timetableDisplay": saved.text("timetableDisplay") == "full" ? "full" : "fit",
-                    "semesterDisplay": WidgetModel.semesterDisplay(saved.text("semesterDisplay"))]
+                    "semesterDisplay": WidgetModel.semesterDisplay(saved.text("semesterDisplay")), "alertLeads": saved["alertLeads"] as? [Int] ?? [60]]
                 updated["preferences"] = saved.number("updatedAt")
                 applied["preferences"] = revisions.integer("preferences")
             } else { complete = false }
@@ -155,10 +154,12 @@ actor WidgetSync {
                 patch["attendance"] = attendance
             } else if resource == "calendar" {
                 let display = WidgetModel.semesterDisplay(before.object("preferences").text("semesterDisplay"))
+                let requestedAt = HongsiClock.milliseconds()
                 let calendar = try await fetch("/api/calendar?refresh=\(force ? 1 : 0)&semester=" + display, owner: owner) as? JSON ?? [:]
                 let todos = try await fetch("/api/todos", owner: owner) as? [JSON] ?? []
                 patch["deadlines"] = Self.deadlines(calendar: calendar, todos: todos, display: display)
                 patch["semesterDisplay"] = display
+                var times = patch.object("updatedAt"); times["calendar"] = requestedAt; patch["updatedAt"] = times
             }
             var times = patch.object("updatedAt")
             if resource != "timetable" && times[resource] == nil { times[resource] = HongsiClock.milliseconds() }
@@ -168,7 +169,11 @@ actor WidgetSync {
             patch["errors"] = [resource: error.localizedDescription]
             if resource == "lectures" { var snapshot = before.object("attendance"); snapshot["error"] = error.localizedDescription; patch["attendance"] = snapshot }
         }
-        _ = try? WidgetStore.merge(owner: owner, patch: patch)
+        let applied = (try? WidgetStore.merge(owner: owner, patch: patch)) == true
+        if applied && patch.object("errors").text(resource).isEmpty && (resource == "seats" || resource == "calendar") {
+            do { try await WidgetReminders.shared.rebuild(owner: owner, channel: resource == "seats" ? "seat" : "due") }
+            catch { NSLog("HongsiWidget: reminder refresh failed (%@)", String(describing: type(of: error))) }
+        }
     }
     static func deadlines(calendar: JSON, todos: [JSON], display: String) -> [JSON] {
         let courses = calendar.objects("courses"), ids = Set(courses.map { $0.integer("id") })
@@ -186,42 +191,14 @@ actor WidgetSync {
         func course(_ id: Int) -> String { courses.first { $0.integer("id") == id }?.text("name") ?? "" }
         let statuses = ["submitted": "제출 완료", "not_submitted": "미제출", "overdue": "마감 지남", "done": "출석 인정", "partial": "부분 인정", "missed": "미인정", "todo": "미시청", "upcoming": "시청 전"]
         let items = calendar.objects("items").map { item -> JSON in
-            var value: JSON = [:]; for key in ["key", "title", "due", "start", "done", "kind"] { value[key] = item[key] ?? NSNull() }
+            var value: JSON = [:]; for key in ["key", "title", "due", "start", "done", "kind", "alert", "alertLeads"] { value[key] = item[key] ?? NSNull() }
             value["course"] = course(item.integer("courseId")); value["color"] = colors[item.integer("courseId")] ?? "#3b82f6"
             value["status"] = statuses[item.text("status")] ?? "상태 확인 필요"; return value
         }
         return items + todos.filter { display == "all" || $0.isNull("courseId") || ids.contains($0.integer("courseId")) }.map { todo in
             ["key": "todo:\(todo.integer("id"))", "title": todo.text("title"), "course": course(todo.integer("courseId")).isEmpty ? "공통" : course(todo.integer("courseId")),
-             "color": colors[todo.integer("courseId")] as Any? ?? NSNull(), "due": todo["due"] ?? NSNull(), "allDay": todo.flag("allDay"), "done": !todo.isNull("doneAt"), "kind": "todo", "status": ""]
-        }
-    }
-}
-
-enum SeatReminders {
-    static func rebuild(owner: String, after: JSON) async throws {
-        let data = WidgetStore.read(), policy = data.object("seatReminders")
-        guard data.text("owner") == owner, WidgetStore.owner(policy.text("account")) == owner else {
-            throw WidgetFailure("앱에서 알림 설정을 확인해 주세요.")
-        }
-        let center = UNUserNotificationCenter.current()
-        let ids = await center.pendingNotificationRequests().filter { Int($0.identifier).map { (7000..<7500).contains($0) } ?? false }.map(\.identifier)
-        guard WidgetStore.read().text("owner") == owner else { return }
-        center.removePendingNotificationRequests(withIdentifiers: ids)
-        guard policy.flag("enabled") else { return }
-        let leads = Array(Set((policy["leads"] as? [Int] ?? []).filter { [60, 30, 10, 0].contains($0) })).sorted(by: >)
-        for (index, lead) in leads.enumerated() {
-            let date = Date(timeIntervalSince1970: after.number("expiresAt") - Double(lead * 60))
-            guard date > Date() else { continue }
-            guard WidgetStore.read().text("owner") == owner else { return }
-            let intent: JSON = ["version": 1, "account": policy.text("account"), "at": date.timeIntervalSince1970 * 1000,
-                                "target": ["kind": "seat", "id": after.integer("id")]]
-            let content = UNMutableNotificationContent()
-            content.title = lead == 0 ? "좌석 이용 시간이 끝났어요." : "좌석 이용 종료까지 \(lead)분 남았어요."
-            content.sound = .default
-            content.userInfo["__EXTRA__"] = ["intent": String(decoding: try JSONSerialization.data(withJSONObject: intent), as: UTF8.self)]
-            let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
-            try await center.add(UNNotificationRequest(identifier: String(7000 + index), content: content,
-                                                       trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: false)))
+             "color": colors[todo.integer("courseId")] as Any? ?? NSNull(), "due": todo["due"] ?? NSNull(), "allDay": todo.flag("allDay"), "done": !todo.isNull("doneAt"), "kind": "todo", "status": "",
+             "alert": todo["notify"] ?? NSNull(), "alertLeads": todo["alertLeads"] ?? NSNull(), "reminderCourse": course(todo.integer("courseId"))]
         }
     }
 }

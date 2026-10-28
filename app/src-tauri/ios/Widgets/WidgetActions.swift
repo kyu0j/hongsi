@@ -148,7 +148,7 @@ actor WidgetActions {
         guard before.integer("id") == id else { throw WidgetFailure("현재 이용 중인 좌석을 확인해 주세요.") }
         guard before.integer("extendCount") == 0 else {
             try WidgetStore.merge(owner: owner, patch: ["seat": before, "updatedAt": ["seats": HongsiClock.milliseconds()]])
-            try await SeatReminders.rebuild(owner: owner, after: before)
+            try await WidgetReminders.shared.rebuild(owner: owner, channel: "seat")
             try WidgetStore.markChanged(owner: owner)
             throw WidgetFailure("이미 한 번 연장했어요.")
         }
@@ -164,7 +164,7 @@ actor WidgetActions {
         guard after.integer("id") == id else { throw WidgetFailure("좌석 상태를 새로고침해 주세요.") }
         try WidgetStore.merge(owner: owner, patch: ["seat": after, "updatedAt": ["seats": HongsiClock.milliseconds()], "errors": ["seats": ""]])
         var message = "이용 시간을 연장했어요."
-        do { try await SeatReminders.rebuild(owner: owner, after: after) }
+        do { try await WidgetReminders.shared.rebuild(owner: owner, channel: "seat") }
         catch { message = "연장 후 알림을 갱신하지 못했어요." }
         let finalMessage = message
         try WidgetStore.changeState(owner: owner) { $0["seatMessage"] = finalMessage }

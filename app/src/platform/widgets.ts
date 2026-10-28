@@ -26,7 +26,7 @@ export function widgetSnapshot(): string {
   return JSON.stringify({
     version: 1,
     owner: app.account,
-    preferences: { midnight: settings.midnight, showUndated: settings.showUndatedAssignments, timetableDisplay: settings.timetableDisplay, semesterDisplay: settings.semesterDisplay },
+    preferences: { midnight: settings.midnight, showUndated: settings.showUndatedAssignments, timetableDisplay: settings.timetableDisplay, semesterDisplay: settings.semesterDisplay, alertLeads: [...settings.alertLeads] },
     semesterDisplay: calendar.data?.semesterDisplay ?? settings.semesterDisplay,
     attendance: attendanceWidgetSnapshot(),
     errors: { timetable: timetable.error, calendar: calendar.error || todos.error, seats: seatSession.error },
@@ -34,11 +34,12 @@ export function widgetSnapshot(): string {
     timetableLoaded: timetable.data !== null,
     slots: (timetable.data?.slots ?? []).map((s) => ({ ...s, color: colors.get(courses.find((c) => c.code === s.code || c.name === s.name)?.id ?? -1) ?? '#3b82f6' })),
     deadlines: [
-      ...(calendar.data?.items ?? []).map((i) => ({ key: i.key, title: i.title, course: course(i.courseId)?.name ?? '', due: i.due, start: i.start, done: i.done, kind: i.kind, status: itemStatus(i).label, color: colors.get(i.courseId) ?? '#3b82f6' })),
-      ...displayedTodos().map((t) => ({ key: `todo:${t.id}`, title: t.title, course: course(t.courseId)?.name ?? '공통', due: t.due, allDay: t.allDay, start: null, done: t.doneAt !== null, kind: 'todo', status: '', color: colors.get(t.courseId ?? -1) ?? null })),
+      ...(calendar.data?.items ?? []).map((i) => ({ key: i.key, title: i.title, course: course(i.courseId)?.name ?? '', due: i.due, start: i.start, done: i.done, kind: i.kind, alert: i.alert, alertLeads: i.alertLeads, status: itemStatus(i).label, color: colors.get(i.courseId) ?? '#3b82f6' })),
+      ...displayedTodos().map((t) => ({ key: `todo:${t.id}`, title: t.title, course: course(t.courseId)?.name ?? '공통', due: t.due, allDay: t.allDay, start: null, done: t.doneAt !== null, kind: 'todo', alert: t.notify, alertLeads: t.alertLeads, reminderCourse: course(t.courseId)?.name ?? '', status: '', color: colors.get(t.courseId ?? -1) ?? null })),
     ],
     seat: seatSession.data?.session ?? null,
     seatReminders: { account: app.account, enabled: notificationState.enabled && !notificationState.remote, leads: [...seatPrefs.alerts] },
+    dueReminders: { account: app.account, enabled: notificationState.enabled && !notificationState.remote },
   });
 }
 

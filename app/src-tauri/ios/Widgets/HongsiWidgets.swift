@@ -35,7 +35,7 @@ struct HongsiProvider: TimelineProvider {
                     dates.append(pendingEnd)
                     reload = pendingEnd
                 }
-            } else {
+            } else if kind != "WEEK" {
                 for minute in 1...60 { dates.append(Date(timeIntervalSince1970: floor(now.timeIntervalSince1970 / 60) * 60 + Double(minute * 60))) }
             }
             let entries = dates.sorted().map { HongsiEntry(date: $0, data: value.data, state: value.state, theme: value.theme) }

@@ -102,7 +102,7 @@ internal object Widgets {
         val next = when {
             ids.isEmpty() -> null
             kind == WidgetKind.SEAT -> WidgetData.seat(context)?.optLong("expiresAt")?.times(1000)?.takeIf { it > now }
-            kind.attendance || kind.today || kind.deadlines || kind == WidgetKind.WEEK -> (now / 60_000 + 1) * 60_000
+            kind.attendance || kind.today || kind.deadlines -> (now / 60_000 + 1) * 60_000
             else -> null
         }
         if (next != null) alarm.set(android.app.AlarmManager.RTC, next, pending)
