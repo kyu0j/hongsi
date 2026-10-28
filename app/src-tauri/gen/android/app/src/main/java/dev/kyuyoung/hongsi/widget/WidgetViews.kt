@@ -17,6 +17,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.os.SystemClock
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
@@ -316,13 +317,8 @@ internal object WidgetViews {
         if (seat == null) return status(context, id, kind, if (failed) "정보를 불러오지 못했어요." else if (WidgetData.read(context).length() == 0) "앱에서 로그인해 주세요." else "이용 중인 좌석이 없어요.")
         val view = layout(context, R.layout.widget_seat)
         view.page(context, id, kind, R.id.widget_root)
-        val seconds = max(0L, seat.optLong("expiresAt") - nowSeconds())
-        val expired = seconds == 0L
-        val left = (seconds / 60.0).roundToInt()
-        val hours = left / 60
-        val minutes = left % 60
-        val duration = if (hours == 0) "${minutes}분" else if (minutes == 0) "${hours}시간" else "${hours}시간 ${minutes}분"
-        val remaining = if (expired) "만료" else "$duration 남음"
+        val remaining = max(0L, seat.optLong("expiresAt") * 1000 - System.currentTimeMillis())
+        val expired = remaining == 0L
         val building = seat.text("buildingName")
         val code = seat.text("building").ifBlank { mapOf("제4공학관" to "T", "학생회관" to "G", "홍문관" to "R")[building].orEmpty() }
         val caption = if (code.isBlank()) building else "$building (${code}동)"
@@ -336,10 +332,13 @@ internal object WidgetViews {
         view.setTextViewText(R.id.seat_building, heading)
         view.text(R.id.seat_room, seat.text("roomName").replace(Regex("제\\s*(\\d+)"), "제 $1"))
         view.text(R.id.seat_number, "${seat.text("seatNo")}${if (seat.text("seatNo").all(Char::isDigit)) "번" else ""}")
-        view.setTextViewText(R.id.seat_remaining, SpannableString(remaining).apply {
-            if (!expired) setSpan(RelativeSizeSpan(.8f), remaining.length - 2, remaining.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        })
-        view.themeText(context, R.id.seat_remaining, if (expired) R.color.widget_error else R.color.widget_text)
+        view.setChronometerCountDown(R.id.seat_remaining, true)
+        view.setChronometer(R.id.seat_remaining, SystemClock.elapsedRealtime() + remaining, null, !expired)
+        view.setViewVisibility(R.id.seat_countdown, if (expired) View.GONE else View.VISIBLE)
+        view.setViewVisibility(R.id.seat_expired, if (expired) View.VISIBLE else View.GONE)
+        view.themeText(context, R.id.seat_remaining, R.color.widget_text)
+        view.themeText(context, R.id.seat_remaining_suffix, R.color.widget_text)
+        view.themeText(context, R.id.seat_expired, R.color.widget_error)
         refresh(context, id, kind, view)
         val extending = SeatExtensionJob.pending(context)
         val extended = seat.optInt("extendCount") > 0

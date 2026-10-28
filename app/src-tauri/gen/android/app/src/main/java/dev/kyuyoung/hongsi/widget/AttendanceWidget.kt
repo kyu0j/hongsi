@@ -98,12 +98,14 @@ internal object Widgets {
         val ids = manager.getAppWidgetIds(ComponentName(context, kind.receiver))
         val alarm = context.getSystemService(android.app.AlarmManager::class.java)
         val pending = PendingIntent.getBroadcast(context, 0, Intent(context, kind.receiver).setAction(TICK), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val active = when {
-            kind == WidgetKind.SEAT -> ids.isNotEmpty() && (WidgetData.seat(context)?.optLong("expiresAt") ?: 0) > nowSeconds()
-            kind.attendance || kind.today || kind.deadlines || kind == WidgetKind.WEEK -> ids.isNotEmpty()
-            else -> false
+        val now = System.currentTimeMillis()
+        val next = when {
+            ids.isEmpty() -> null
+            kind == WidgetKind.SEAT -> WidgetData.seat(context)?.optLong("expiresAt")?.times(1000)?.takeIf { it > now }
+            kind.attendance || kind.today || kind.deadlines || kind == WidgetKind.WEEK -> (now / 60_000 + 1) * 60_000
+            else -> null
         }
-        if (active) alarm.set(android.app.AlarmManager.RTC, (System.currentTimeMillis() / 60_000 + 1) * 60_000, pending)
+        if (next != null) alarm.set(android.app.AlarmManager.RTC, next, pending)
         else alarm.cancel(pending)
     }
     fun updateAll(context: Context, preserveInput: Boolean = false) {

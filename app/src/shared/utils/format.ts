@@ -103,11 +103,12 @@ export function dday(sec: number, now: number): { label: string; tone: 'past' | 
 }
 
 export function duration(ms: number): string {
-  const total = Math.max(0, Math.round(ms / 60_000));
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  if (h === 0) return `${m}분`;
-  return m === 0 ? `${h}시간` : `${h}시간 ${m}분`;
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor(total / 60) % 60;
+  const s = total % 60;
+  const digits = (value: number) => String(value).padStart(2, '0');
+  return h > 0 ? `${digits(h)}:${digits(m)}:${digits(s)}` : `${digits(m)}:${digits(s)}`;
 }
 
 export function ago(sec: number): string {

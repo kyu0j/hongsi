@@ -27,6 +27,14 @@ struct HongsiProvider: TimelineProvider {
             if kind == "ATTENDANCE" {
                 dates = WidgetModel.attendanceTimelineDates(value.data, state: value.state, now: now)
                 reload = localReload ?? WidgetModel.attendanceReloadDate(value.data, now: now)
+            } else if kind == "SEAT" {
+                let expires = Date(timeIntervalSince1970: value.data.object("seat").number("expiresAt"))
+                if expires > now { dates.append(expires) }
+                if WidgetModel.seatExtending(value.state, seat: value.data.object("seat"), now: now) {
+                    let pendingEnd = Date(timeIntervalSince1970: value.state.number("seatPendingAt") / 1000 + 75)
+                    dates.append(pendingEnd)
+                    reload = pendingEnd
+                }
             } else {
                 for minute in 1...60 { dates.append(Date(timeIntervalSince1970: floor(now.timeIntervalSince1970 / 60) * 60 + Double(minute * 60))) }
             }
@@ -326,10 +334,8 @@ struct HongsiWidgetView: View {
         if !data.object("errors").text("seats").isEmpty { seatStatus("정보를 불러오지 못했어요.") }
         else if seat.isEmpty || !seat.isNull("endedAt") { seatStatus("이용 중인 좌석이 없어요.") }
         else {
-            let remaining = max(0, Int(((seat.number("expiresAt") - entry.date.timeIntervalSince1970) / 60).rounded()))
-            let hours = remaining / 60, minutes = remaining % 60
-            let duration = hours == 0 ? "\(minutes)분" : minutes == 0 ? "\(hours)시간" : "\(hours)시간 \(minutes)분"
-            let expired = seat.number("expiresAt") <= entry.date.timeIntervalSince1970
+            let expires = Date(timeIntervalSince1970: seat.number("expiresAt"))
+            let expired = expires <= entry.date
             let extended = seat.integer("extendCount") > 0
             let extending = WidgetModel.seatExtending(entry.state, seat: seat, now: entry.date)
             let detail = "\(seat.integer("id")):\(seat.integer("extendCount")):\(Int64(data.object("updatedAt").number("seats")))"
@@ -346,8 +352,15 @@ struct HongsiWidgetView: View {
                     .font(.system(size: 14)).foregroundStyle(palette.muted).lineLimit(1).padding(.top, 2)
                 Text("\(number)번").font(.system(size: 32, weight: .bold))
                     .lineLimit(1).minimumScaleFactor(0.7).frame(maxHeight: .infinity, alignment: .leading)
-                (Text(expired ? "만료" : duration).font(.system(size: 17)) + Text(expired ? "" : " 남음").font(.system(size: 13.6)))
-                    .foregroundStyle(expired ? palette.error : palette.text).lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity)
+                Group {
+                    if expired {
+                        Text("만료").font(.system(size: 17)).foregroundStyle(palette.error)
+                    } else {
+                        (Text(timerInterval: entry.date...expires, countsDown: true, showsHours: true)
+                            .font(.system(size: 17)).monospacedDigit() + Text(" 남음").font(.system(size: 13.6)))
+                            .foregroundStyle(palette.text)
+                    }
+                }.lineLimit(1).minimumScaleFactor(0.8).multilineTextAlignment(.center).frame(maxWidth: .infinity, alignment: .center)
                 HStack(spacing: 6) {
                     Toggle(isOn: extending, intent: intent("extend", detail: detail)) { Text("연장") }
                         .toggleStyle(WidgetPendingStyle(palette: palette, title: extended ? "연장됨" : "연장", pendingTitle: "연장 중…", icon: "extend"))
