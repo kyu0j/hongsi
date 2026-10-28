@@ -203,10 +203,19 @@ enum WidgetModel {
 
     static func attendanceTimelineDates(_ data: JSON, state: JSON, now: Date) -> [Date] {
         var dates = [now]
+        let snapshot = data.object("attendance")
         if !attendanceInputActive(state, now: now) {
             for step in 1...12 { dates.append(now.addingTimeInterval(Double(step * 5 * 60))) }
+            if snapshot.text("date") == HongsiClock.text(now) {
+                for session in snapshot.objects("sessions") where session.number("at") > 0 {
+                    let start = Date(timeIntervalSince1970: session.number("at") / 1000)
+                    for offset in [-180.0, 601.0, 3600.0] {
+                        let boundary = start.addingTimeInterval(offset)
+                        if boundary > now { dates.append(boundary) }
+                    }
+                }
+            }
         }
-        let snapshot = data.object("attendance")
         if snapshot.text("date") == HongsiClock.text(now) && !snapshot.objects("active").isEmpty {
             let expiry = Date(timeIntervalSince1970: snapshot.number("checkedAt") / 1000 + attendanceMaxAge)
             if expiry > now { dates.append(expiry) }
