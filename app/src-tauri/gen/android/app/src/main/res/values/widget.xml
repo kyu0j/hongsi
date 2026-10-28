@@ -39,7 +39,6 @@
     <color name="widget_timetable_surface">#ffffff</color>
     <color name="widget_timetable_text">#202735</color>
     <color name="widget_timetable_text_secondary">#535e6e</color>
-    <color name="widget_timetable_now">#bf3037</color>
     <color name="widget_attendance_status">#B3390B</color>
 
     <color name="widget_app_surface">#ffffff</color>

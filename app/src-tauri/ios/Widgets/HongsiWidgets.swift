@@ -485,12 +485,12 @@ struct HongsiWidgetView: View {
     @ViewBuilder private var week: some View {
         if !WidgetModel.hasTimetable(data) { empty(data.object("errors").text("timetable").isEmpty ? "앱에서 시간표를 한 번 불러와 주세요." : "정보를 불러오지 못했어요.") }
         else if data.objects("slots").isEmpty { empty("등록된 수업이 없어요.") }
-        else { WeekGrid(data: data, date: entry.date, palette: palette) }
+        else { WeekGrid(data: data, palette: palette) }
     }
 }
 
 struct WeekGrid: View {
-    let data: JSON, date: Date, palette: WidgetPalette
+    let data: JSON, palette: WidgetPalette
     var body: some View {
         Canvas { context, size in
             let slots = data.objects("slots")
@@ -531,13 +531,6 @@ struct WeekGrid: View {
                 let roomColor = Color(hex: palette.dark ? "293548" : "535e6e")
                 clipped.draw(Text(String(slot.text("room").prefix(10))).font(.system(size: 10)).foregroundColor(roomColor),
                              at: CGPoint(x: box.minX + 4, y: min(box.minY + CGFloat(lines.count) * 14 + 3, box.maxY - 14)), anchor: .topLeading)
-            }
-            let today = HongsiClock.weekday(date), minute = HongsiClock.minute(date)
-            if today < days && minute >= start && minute < end {
-                let x = left + CGFloat(today) * column, y = top + CGFloat(minute - start) * unit
-                var line = Path(); line.move(to: CGPoint(x: x, y: y)); line.addLine(to: CGPoint(x: x + column, y: y))
-                context.stroke(line, with: .color(palette.deadlineSoon), lineWidth: 2)
-                context.fill(Path(ellipseIn: CGRect(x: x - 3, y: y - 3, width: 6, height: 6)), with: .color(palette.deadlineSoon))
             }
         }
         .accessibilityLabel("주간 시간표. " + data.objects("slots").map { "\($0.text("name")), \($0.text("start")), \($0.text("room"))" }.joined(separator: ". "))

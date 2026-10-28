@@ -367,8 +367,6 @@ internal object WidgetViews {
         val canvas = Canvas(bitmap); canvas.scale(scale, scale)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val slots = WidgetData.slots(context)
-        val today = weekday()
-        val now = minuteOfDay()
         val days = max(5, (slots.maxOfOrNull { it.optInt("weekday") } ?: 4) + 1)
         val starts = slots.map { minutes(it.text("start")) }
         val fit = WidgetData.read(context).optJSONObject("preferences")?.text("timetableDisplay", "fit") != "full" && slots.isNotEmpty()
@@ -415,15 +413,6 @@ internal object WidgetViews {
                 paint.color = color(context, R.color.widget_timetable_text_secondary); paint.textSize = 10f; paint.typeface = Typeface.DEFAULT
                 canvas.drawText(slot.text("room").take(10), box.left + 4, min(y + 2, box.bottom - 4), paint)
             }
-        }
-        if (today < days && now in start until end) {
-            val x = left + today * col
-            val y = top + (now - start) * unit
-            paint.color = color(context, R.color.widget_timetable_now)
-            paint.style = Paint.Style.FILL
-            paint.strokeWidth = 2f
-            canvas.drawLine(x, y, x + col, y, paint)
-            canvas.drawCircle(x, y, 3f, paint)
         }
         return bitmap
     }
