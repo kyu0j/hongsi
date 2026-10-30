@@ -84,8 +84,7 @@ export async function openWidgetIntent() {
       }
     }
     else if (target.kind === 'ATTENDANCE') { go('attendance'); await lectures.load(true); }
-    else if (target.kind === 'WEEK') { go('attendance'); focus.timetable = true; void timetable.load(); }
-    else if (target.kind.startsWith('TODAY')) { go('attendance'); await timetable.load(); }
+    else if (target.kind === 'WEEK' || target.kind.startsWith('TODAY')) { go('attendance'); await timetable.load(); }
     else if (target.kind.startsWith('DEADLINES')) {
       go('calendar');
       if (!target.detail.startsWith('deadline:')) return;

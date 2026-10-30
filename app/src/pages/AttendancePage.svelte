@@ -15,7 +15,6 @@
   import { attendance, timetable } from '../features/attendance/attendance-resources.svelte';
   import { calendar } from '../features/calendar/calendar-resources.svelte';
   import { pref, setPref } from '../shared/state/preferences';
-  import { focus } from '../shared/state/ui.svelte';
   import type { AttendanceMark, AttendanceWeek, MarkKind } from '../shared/types';
   import Icon from '../shared/ui/Icon.svelte';
   import LoadError from '../shared/ui/LoadError.svelte';
@@ -42,13 +41,6 @@
     attendance.load();
     calendar.load();
     timetable.load();
-  });
-
-  $effect(() => {
-    if (focus.timetable) {
-      focus.timetable = false;
-      weekOpen = true;
-    }
   });
 
   const today = $derived(todayClasses(timetable.data?.slots ?? [], classWatch.now));
