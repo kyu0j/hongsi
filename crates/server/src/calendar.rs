@@ -8,8 +8,12 @@ use crate::db::{self, Snapshot};
 
 pub async fn sync_parents(db: &sqlx::PgPool, session: &crate::sessions::UserSession, parents: Vec<TodoParent>) -> sqlx::Result<()> {
     crate::todos::sync_parents(db, session.user_id, &parents).await?;
-    session.todo_parents.lock().expect("세션 잠금").extend(parents.into_iter().map(|p| (p.key.clone(), p)));
+    cache_parents(session, parents);
     Ok(())
+}
+
+pub fn cache_parents(session: &crate::sessions::UserSession, parents: Vec<TodoParent>) {
+    session.todo_parents.lock().expect("세션 잠금").extend(parents.into_iter().map(|p| (p.key.clone(), p)));
 }
 
 pub async fn known_parents(db: &sqlx::PgPool, session: &crate::sessions::UserSession) -> sqlx::Result<Vec<TodoParent>> {

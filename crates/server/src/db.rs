@@ -154,13 +154,20 @@ pub async fn sync_assignments_in(db: &mut sqlx::PgConnection, user_id: i64, item
         pending = rest;
     }
     let cmids: Vec<i64> = items.iter().map(|a| a.cmid).collect();
+    assignment_snapshots(db, user_id, &cmids).await
+}
+
+pub async fn assignment_snapshots(db: impl sqlx::Executor<'_, Database = sqlx::Postgres>, user_id: i64, cmids: &[i64]) -> sqlx::Result<HashMap<i64, Snapshot>> {
+    if cmids.is_empty() {
+        return Ok(HashMap::new());
+    }
     let rows = sqlx::query(
         "select cmid, first_seen_at, first_due_at, first_intro_html, change_count
          from assignment_snapshots where user_id=$1 and cmid=any($2::bigint[])",
     )
     .bind(user_id)
-    .bind(&cmids)
-    .fetch_all(&mut *db)
+    .bind(cmids)
+    .fetch_all(db)
     .await?;
     let mut out = HashMap::with_capacity(rows.len());
     for row in rows {

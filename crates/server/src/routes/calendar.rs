@@ -62,7 +62,7 @@ pub(crate) async fn archive_put(State(st): State<Shared>, user: CurrentUser, Que
         .ok_or_else(|| ApiError::not_found("저장된 학교 정보가 없어요."))?;
     let data = calendar::archive::render(&st.db, user.session.user_id, record).await?;
     *user.session.calendar_cache.lock().await = Default::default();
-    calendar::sync_parents(&st.db, &user.session, data.items.iter().map(calendar::TodoParent::from).collect()).await?;
+    calendar::cache_parents(&user.session, data.items.iter().map(calendar::TodoParent::from).collect());
     Ok(Json(data))
 }
 
@@ -96,7 +96,8 @@ pub(crate) async fn calendar_state(State(st): State<Shared>, user: CurrentUser, 
         *user.session.device_courses.lock().expect("세션 잠금") = b.courses.iter().map(|c| c.id).collect();
     }
     let mut preserved = None;
-    if b.current_term.is_some() {
+    let stored = b.current_term.is_some();
+    if stored {
         let mut current = hongsi_core::calendar_cache::SchoolCalendarData {
             current_term: b.current_term, courses: b.courses.clone(), assignments: b.assignments.clone(), vods: b.vods.clone(),
             failed_course_ids: b.failed_course_ids.clone(),
@@ -109,12 +110,15 @@ pub(crate) async fn calendar_state(State(st): State<Shared>, user: CurrentUser, 
         b.assignments = current.assignments.clone();
         b.vods = current.vods.clone();
         if !current.failed_course_ids.is_empty() {
-            b.assignments = current.assignments.clone();
-            b.vods = current.vods.clone();
             preserved = Some(current);
         }
     }
-    let snapshots = db::sync_assignments(&st.db, user.session.user_id, &b.assignments).await?;
+    let snapshots = if stored {
+        let cmids: Vec<_> = b.assignments.iter().map(|a| a.cmid).collect();
+        db::assignment_snapshots(&st.db, user.session.user_id, &cmids).await?
+    } else {
+        db::sync_assignments(&st.db, user.session.user_id, &b.assignments).await?
+    };
     let checks = db::item_checks(&st.db, user.session.user_id).await?;
     let alerts_off = db::item_alerts_off(&st.db, user.session.user_id).await?;
     let alert_leads = db::item_alert_leads(&st.db, user.session.user_id).await?;
@@ -129,8 +133,19 @@ pub(crate) async fn calendar_state(State(st): State<Shared>, user: CurrentUser, 
         Utc::now().timestamp(),
     );
     let mut parents: Vec<_> = items.iter().map(calendar::TodoParent::from).collect();
-    parents.extend(b.parents);
-    calendar::sync_parents(&st.db, &user.session, parents).await?;
+    if stored {
+        let known: std::collections::HashMap<_, _> = parents.iter()
+            .map(|p| (p.key.as_str(), (p.course_id, p.finished))).collect();
+        b.parents.retain(|p| known.get(p.key.as_str()) != Some(&(p.course_id, p.finished)));
+        if !b.parents.is_empty() {
+            crate::todos::sync_parents(&st.db, user.session.user_id, &b.parents).await?;
+        }
+        parents.extend(b.parents);
+        calendar::cache_parents(&user.session, parents);
+    } else {
+        parents.extend(b.parents);
+        calendar::sync_parents(&st.db, &user.session, parents).await?;
+    }
     Ok(Json(
         json!({ "snapshots": snapshots, "checks": checks, "alertsOff": alerts_off, "alertLeads": alert_leads, "schoolData": preserved }),
     ))
