@@ -10,14 +10,20 @@ pub fn ts(t: Option<i64>) -> Option<DateTime<Utc>> {
 }
 
 pub async fn upsert_user(db: &PgPool, user_key: &str) -> sqlx::Result<i64> {
-    sqlx::query_scalar(
-        "insert into users (user_key) values ($1)
-         on conflict (user_key) do update set last_login_at = now()
-         returning id",
-    )
-    .bind(user_key)
-    .fetch_one(db)
-    .await
+    let update = "update users set last_login_at = now() where user_key = $1 returning id";
+    if let Some(id) = sqlx::query_scalar(update).bind(user_key).fetch_optional(db).await? {
+        return Ok(id);
+    }
+    let mut tx = db.begin().await?;
+    sqlx::query("select pg_advisory_xact_lock(0, hashtext($1))")
+        .bind(user_key).execute(&mut *tx).await?;
+    let id = match sqlx::query_scalar(update).bind(user_key).fetch_optional(&mut *tx).await? {
+        Some(id) => id,
+        None => sqlx::query_scalar("insert into users (user_key) values ($1) returning id")
+            .bind(user_key).fetch_one(&mut *tx).await?,
+    };
+    tx.commit().await?;
+    Ok(id)
 }
 
 
