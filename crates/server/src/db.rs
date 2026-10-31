@@ -255,7 +255,9 @@ pub async fn item_alert_leads(db: impl sqlx::Executor<'_, Database = sqlx::Postg
 
 pub async fn set_item_alert_leads(db: &PgPool, user_id: i64, key: &str, leads: Option<&[i32]>) -> sqlx::Result<()> {
     if let Some(leads) = leads {
-        sqlx::query("insert into item_alert_leads (user_id, item_key, leads) values ($1, $2, $3) on conflict (user_id, item_key) do update set leads = excluded.leads")
+        sqlx::query("insert into item_alert_leads (user_id, item_key, leads) values ($1, $2, $3)
+            on conflict (user_id, item_key) do update set leads = excluded.leads
+            where item_alert_leads.leads is distinct from excluded.leads")
             .bind(user_id).bind(key).bind(leads).execute(db).await?;
     } else {
         sqlx::query("delete from item_alert_leads where user_id = $1 and item_key = $2")

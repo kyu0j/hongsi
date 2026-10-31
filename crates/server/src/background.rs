@@ -313,7 +313,7 @@ async fn queue_notices(db: &mut sqlx::PgConnection, uid: i64, account: &str, sna
         known.retain(|key| !keys.contains(key));
         keys.extend(known);
         keys.truncate(500);
-        sqlx::query("update notification_devices set notice_keys=$2 where id=$1")
+        sqlx::query("update notification_devices set notice_keys=$2 where id=$1 and notice_keys is distinct from $2")
             .bind(id).bind(keys).execute(&mut *db).await?;
     }
     Ok(())
@@ -332,7 +332,8 @@ async fn enqueue(
          select $1,$2,$3,to_timestamp($4),to_timestamp($5)
          where $2 not like 'due:%' or to_timestamp($4)>now()
          on conflict(device_id,event_key) do update set payload=excluded.payload
-         where notification_outbox.sent_at is null"
+         where notification_outbox.sent_at is null
+           and notification_outbox.payload is distinct from excluded.payload"
     )
         .bind(device).bind(key).bind(payload).bind(at as f64).bind((at+ttl) as f64).execute(db).await?;
     Ok(())
