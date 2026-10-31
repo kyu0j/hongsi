@@ -67,7 +67,7 @@ pub async fn patch(State(st): State<Shared>, user: CurrentUser, Json(mut changes
     let uid = user.session.user_id;
     let mut tx = st.db.begin().await?;
     sqlx::query("select pg_advisory_xact_lock($1)").bind(-uid).execute(&mut *tx).await?;
-    let saved: Preferences = sqlx::query_as("insert into account_preferences(user_id,meal_place,timetable_display,alert_leads,semester_display,midnight,show_undated_assignments)
+    let saved: Option<Preferences> = sqlx::query_as("insert into account_preferences(user_id,meal_place,timetable_display,alert_leads,semester_display,midnight,show_undated_assignments)
         values($1,coalesce($2,'dorm'),coalesce($3,'fit'),coalesce($4,array[60]),coalesce($5,'current'),coalesce($6,'prev'),coalesce($7,false))
         on conflict(user_id) do update set meal_place=coalesce($2,account_preferences.meal_place),
         timetable_display=coalesce($3,account_preferences.timetable_display),
@@ -75,10 +75,19 @@ pub async fn patch(State(st): State<Shared>, user: CurrentUser, Json(mut changes
         alert_leads=coalesce($4,account_preferences.alert_leads),
         midnight=coalesce($6,account_preferences.midnight),
         show_undated_assignments=coalesce($7,account_preferences.show_undated_assignments),updated_at=clock_timestamp()
+        where (account_preferences.meal_place,account_preferences.timetable_display,account_preferences.semester_display,
+               account_preferences.alert_leads,account_preferences.midnight,account_preferences.show_undated_assignments)
+            is distinct from (coalesce($2,account_preferences.meal_place),coalesce($3,account_preferences.timetable_display),
+               coalesce($5,account_preferences.semester_display),coalesce($4,account_preferences.alert_leads),
+               coalesce($6,account_preferences.midnight),coalesce($7,account_preferences.show_undated_assignments))
         returning meal_place,timetable_display,semester_display,alert_leads,midnight,show_undated_assignments,floor(extract(epoch from updated_at)*1000)::bigint as updated_at")
         .bind(uid).bind(&changes.meal_place).bind(&changes.timetable_display).bind(&changes.alert_leads).bind(&changes.semester_display)
         .bind(&changes.midnight).bind(changes.show_undated_assignments)
-        .fetch_one(&mut *tx).await?;
+        .fetch_optional(&mut *tx).await?;
+    let saved = match saved {
+        Some(saved) => saved,
+        None => load(&mut *tx, uid).await?,
+    };
     if let Some(leads) = &changes.alert_leads {
         sqlx::query("delete from notification_outbox o using notification_devices d
             where o.device_id=d.id and d.user_id=$1 and o.sent_at is null and o.event_key like 'due:%'

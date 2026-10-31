@@ -197,7 +197,8 @@ pub async fn set_item_check(db: &PgPool, user_id: i64, key: &str, done: bool) ->
     crate::todos::lock(&mut tx, user_id).await?;
     sqlx::query(
         "insert into item_checks (user_id, item_key, done) values ($1, $2, $3)
-         on conflict (user_id, item_key) do update set done = excluded.done, updated_at = now()",
+         on conflict (user_id, item_key) do update set done = excluded.done, updated_at = now()
+         where item_checks.done is distinct from excluded.done",
     )
     .bind(user_id)
     .bind(key)

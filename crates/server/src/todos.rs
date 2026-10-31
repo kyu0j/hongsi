@@ -46,7 +46,7 @@ pub async fn list(db: impl sqlx::Executor<'_, Database = sqlx::Postgres>, user_i
     .await
 }
 
-pub async fn get(db: &PgPool, user_id: i64, id: i64) -> sqlx::Result<Option<Todo>> {
+pub async fn get(db: impl sqlx::Executor<'_, Database = sqlx::Postgres>, user_id: i64, id: i64) -> sqlx::Result<Option<Todo>> {
     sqlx::query_as(&format!("select {COLUMNS} from todos where user_id=$1 and id=$2"))
         .bind(user_id).bind(id).fetch_optional(db).await
 }
@@ -88,7 +88,10 @@ pub async fn update(db: &PgPool, user_id: i64, id: i64, t: &TodoInput, due: Date
         "update todos set course_id = case when parent_key is null then $3 else course_id end,
                 title = $5, note = $6, due = $7, all_day = $8, notify = $9, alert_leads = $10,
                 updated_at = now()
-         where user_id = $1 and id = $2 and parent_key is not distinct from $4::text returning {COLUMNS}"
+         where user_id = $1 and id = $2 and parent_key is not distinct from $4::text
+           and (course_id,title,note,due,all_day,notify,alert_leads)
+               is distinct from (case when parent_key is null then $3 else course_id end,$5,$6,$7,$8,$9,$10)
+         returning {COLUMNS}"
     ))
     .bind(user_id)
     .bind(id)
@@ -102,6 +105,10 @@ pub async fn update(db: &PgPool, user_id: i64, id: i64, t: &TodoInput, due: Date
     .bind(&t.alert_leads)
     .fetch_optional(&mut *tx)
     .await?;
+    let result = match result {
+        Some(todo) => Some(todo),
+        None => get(&mut *tx, user_id, id).await?.filter(|todo| todo.parent_key == t.parent_key),
+    };
     tx.commit().await?;
     Ok(result)
 }
@@ -113,7 +120,10 @@ pub async fn set_done(db: &PgPool, user_id: i64, id: i64, done: bool, school_don
         "update todos set done_at = case when $3 or (parent_key is not null and
             coalesce((select done from item_checks where user_id=$1 and item_key=todos.parent_key), $4))
             then coalesce(done_at, now()) else null end, updated_at = now()
-         where user_id = $1 and id = $2 returning {COLUMNS}"
+         where user_id = $1 and id = $2
+           and (done_at is not null) is distinct from ($3 or (parent_key is not null and
+               coalesce((select done from item_checks where user_id=$1 and item_key=todos.parent_key), $4)))
+         returning {COLUMNS}"
     ))
     .bind(user_id)
     .bind(id)
@@ -121,6 +131,10 @@ pub async fn set_done(db: &PgPool, user_id: i64, id: i64, done: bool, school_don
     .bind(school_done)
     .fetch_optional(&mut *tx)
     .await?;
+    let todo = match todo {
+        Some(todo) => Some(todo),
+        None => get(&mut *tx, user_id, id).await?,
+    };
     cancel_completed_alerts(&mut tx, user_id).await?;
     tx.commit().await?;
     Ok(todo)
