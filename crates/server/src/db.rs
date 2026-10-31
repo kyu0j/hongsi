@@ -97,46 +97,80 @@ pub struct Snapshot {
 }
 
 pub async fn sync_assignments(db: &PgPool, user_id: i64, items: &[Assignment]) -> sqlx::Result<HashMap<i64, Snapshot>> {
+    if items.is_empty() {
+        return Ok(HashMap::new());
+    }
     let mut tx = db.begin().await?;
+    crate::todos::lock(&mut tx, user_id).await?;
     let out = sync_assignments_in(&mut tx, user_id, items).await?;
     tx.commit().await?;
     Ok(out)
 }
 
 pub async fn sync_assignments_in(db: &mut sqlx::PgConnection, user_id: i64, items: &[Assignment]) -> sqlx::Result<HashMap<i64, Snapshot>> {
-    let mut out = HashMap::new();
-    for a in items {
-        let row = sqlx::query(
-            "insert into assignment_snapshots
+    if items.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let mut pending = items;
+    while !pending.is_empty() {
+        let mut seen = HashSet::new();
+        let count = pending.iter().take_while(|a| seen.insert(a.cmid)).count();
+        let (batch, rest) = pending.split_at(count);
+        let cmids: Vec<i64> = batch.iter().map(|a| a.cmid).collect();
+        let courses: Vec<i64> = batch.iter().map(|a| a.course_id).collect();
+        let names: Vec<&str> = batch.iter().map(|a| a.name.as_str()).collect();
+        let dues: Vec<Option<DateTime<Utc>>> = batch.iter().map(|a| ts(a.due)).collect();
+        let intros: Vec<&str> = batch.iter().map(|a| a.intro_html.as_str()).collect();
+        let modified: Vec<Option<DateTime<Utc>>> = batch.iter().map(|a| ts(Some(a.modified))).collect();
+        sqlx::query(
+            "insert into assignment_snapshots as saved
                  (user_id, cmid, course_id, name, first_due_at, first_intro_html, due_at, modified_at)
-             values ($1, $2, $3, $4, $5, $6, $5, $7)
+             select $1, incoming.cmid, incoming.course_id, incoming.name,
+                    incoming.due_at, incoming.intro_html, incoming.due_at, incoming.modified_at
+             from unnest($2::bigint[], $3::bigint[], $4::text[], $5::timestamptz[], $6::text[], $7::timestamptz[])
+                  as incoming(cmid, course_id, name, due_at, intro_html, modified_at)
+             order by incoming.cmid
              on conflict (user_id, cmid) do update set
-                 change_count = assignment_snapshots.change_count
-                     + case when assignment_snapshots.modified_at is distinct from excluded.modified_at then 1 else 0 end,
-                 last_changed_at = case when assignment_snapshots.modified_at is distinct from excluded.modified_at
-                     then now() else assignment_snapshots.last_changed_at end,
+                 change_count = saved.change_count
+                     + case when saved.modified_at is distinct from excluded.modified_at then 1 else 0 end,
+                 last_changed_at = case when saved.modified_at is distinct from excluded.modified_at
+                     then now() else saved.last_changed_at end,
                  course_id = excluded.course_id,
                  name = excluded.name,
                  due_at = excluded.due_at,
                  modified_at = excluded.modified_at
-             returning first_seen_at, first_due_at, first_intro_html, change_count",
+             where (saved.course_id, saved.name, saved.due_at, saved.modified_at)
+                   is distinct from (excluded.course_id, excluded.name, excluded.due_at, excluded.modified_at)",
         )
         .bind(user_id)
-        .bind(a.cmid)
-        .bind(a.course_id)
-        .bind(&a.name)
-        .bind(ts(a.due))
-        .bind(&a.intro_html)
-        .bind(ts(Some(a.modified)))
-        .fetch_one(&mut *db)
+        .bind(&cmids)
+        .bind(&courses)
+        .bind(&names)
+        .bind(&dues)
+        .bind(&intros)
+        .bind(&modified)
+        .execute(&mut *db)
         .await?;
+        pending = rest;
+    }
+    let cmids: Vec<i64> = items.iter().map(|a| a.cmid).collect();
+    let rows = sqlx::query(
+        "select cmid, first_seen_at, first_due_at, first_intro_html, change_count
+         from assignment_snapshots where user_id=$1 and cmid=any($2::bigint[])",
+    )
+    .bind(user_id)
+    .bind(&cmids)
+    .fetch_all(&mut *db)
+    .await?;
+    let mut out = HashMap::with_capacity(rows.len());
+    for row in rows {
         out.insert(
-            a.cmid,
+            row.try_get(0)?,
             Snapshot {
-                first_seen: row.try_get(0)?,
-                first_due: row.try_get(1)?,
-                first_intro_html: row.try_get(2)?,
-                change_count: row.try_get(3)?,
+                first_seen: row.try_get(1)?,
+                first_due: row.try_get(2)?,
+                first_intro_html: row.try_get(3)?,
+                change_count: row.try_get(4)?,
             },
         );
     }
