@@ -1,6 +1,15 @@
 name: Ubuntu server
 on:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'branch, tag, commit sha for build'
+        type: string
+        required: false
+      deploy:
+        description: 'deploy on ubuntu server'
+        type: boolean
+        default: false
   release:
     types: [published]
   push:
@@ -34,6 +43,8 @@ jobs:
     runs-on: ubuntu-26.04-arm
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -94,8 +105,12 @@ jobs:
           gh release upload --repo "$GITHUB_REPOSITORY" -- "$RELEASE_TAG" release-assets/hongsi-server-ubuntu26-arm64.tar.gz
 
   deploy:
-    if: github.event_name == 'release' && !github.event.release.prerelease && !github.event.release.draft
-    needs: publish
+    if: >-
+      always() && !cancelled() && needs.build.result == 'success' &&
+      ((github.event_name == 'release' && needs.publish.result == 'success' &&
+        !github.event.release.prerelease && !github.event.release.draft) ||
+       (github.event_name == 'workflow_dispatch' && inputs.deploy))
+    needs: [build, publish]
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 10
     concurrency:
@@ -107,6 +122,7 @@ jobs:
           name: hongsi-server-ubuntu26-arm64
           path: release-assets
       - name: Check latest release
+        if: github.event_name == 'release'
         id: latest
         env:
           GH_TOKEN: ${{ github.token }}
@@ -117,10 +133,11 @@ jobs:
             echo "deploy=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Upload and restart Hongsi
-        if: steps.latest.outputs.deploy == 'true'
+        if: github.event_name == 'workflow_dispatch' || steps.latest.outputs.deploy == 'true'
         env:
           DEPLOY_HOST: ${{ secrets.HONGSI_DEPLOY_HOST }}
           DEPLOY_SSH_KEY: ${{ secrets.HONGSI_DEPLOY_SSH_KEY }}
+          DEPLOY_MODE: ${{ github.event_name == 'workflow_dispatch' && 'server' || 'full' }}
         run: |
           : "${DEPLOY_HOST:?}" "${DEPLOY_SSH_KEY:?}"
           install -d -m 700 ~/.ssh
@@ -129,11 +146,18 @@ jobs:
           trap 'rm -f ~/.ssh/hongsi_key' EXIT
           ssh_options=(-i "$HOME/.ssh/hongsi_key" -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
           scp "${ssh_options[@]}" release-assets/hongsi-server-ubuntu26-arm64.tar.gz "ubuntu@$DEPLOY_HOST:/home/ubuntu/hongsi/.deploy.tar.gz"
-          ssh "${ssh_options[@]}" "ubuntu@$DEPLOY_HOST" 'bash -se' <<'REMOTE'
+          ssh "${ssh_options[@]}" "ubuntu@$DEPLOY_HOST" bash -se -- "$DEPLOY_MODE" <<'REMOTE'
           cd /home/ubuntu/hongsi
           tar -tzf .deploy.tar.gz > /dev/null
-          rm -rf -- bin dist LICENSE
-          tar -xzf .deploy.tar.gz ./bin ./dist ./LICENSE
+          if [ "$1" = server ]; then
+            mkdir -p bin
+            tar -xzf .deploy.tar.gz --to-stdout ./bin/hongsi-server > bin/hongsi-server.new
+            chmod 755 bin/hongsi-server.new
+            mv -f -- bin/hongsi-server.new bin/hongsi-server
+          else
+            rm -rf -- bin dist LICENSE
+            tar -xzf .deploy.tar.gz ./bin ./dist ./LICENSE
+          fi
           rm -f .deploy.tar.gz
           sudo -n systemctl restart hongsi.service
           REMOTE
