@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { flushSync, onMount } from 'svelte';
   import { ApiError, api } from '../../shared/api/api';
   import { attendanceFailureMessage } from '../../shared/api/api-error';
   import { currentLocation } from '../../platform/location';
@@ -25,6 +25,7 @@
   let target = $state<ActiveLecture | null>(null);
   let open = $state(false);
   let code = $state('');
+  let codeInput: HTMLInputElement | undefined = $state();
   let geo = $state<{ state: 'idle' | 'finding' | 'ok' | 'error'; lat?: number; lon?: number; acc?: number; msg?: string }>({
     state: 'idle',
   });
@@ -64,10 +65,13 @@
 
   function startAttend(l: ActiveLecture) {
     if (busy) return;
-    target = l;
-    code = '';
-    result = '';
-    open = true;
+    flushSync(() => {
+      target = l;
+      code = '';
+      result = '';
+      open = true;
+    });
+    codeInput?.focus({ preventScroll: true });
     locate();
   }
 
@@ -160,18 +164,17 @@
   </div>
 </section>
 
-<Sheet bind:open title={target?.name ?? '출결하기'} titleMeta={target?.time}>
+<Sheet bind:open title={target?.name ?? '출결하기'} titleMeta={target?.time} keyboardAware>
   <form id="attend" onsubmit={submit} class="attend">
     <label class="code">
-      <!-- svelte-ignore a11y_autofocus -->
       <input
+        bind:this={codeInput}
         bind:value={code}
         inputmode="numeric"
         autocomplete="one-time-code"
         maxlength="12"
         aria-label="출결번호"
         placeholder="출결번호"
-        autofocus
       />
     </label>
     <div class="geo {geo.state}">

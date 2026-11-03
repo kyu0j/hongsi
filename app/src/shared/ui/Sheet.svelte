@@ -17,6 +17,7 @@
     titleIcon = '',
     wide = false,
     confirm = false,
+    keyboardAware = false,
     showClose = true,
     closeDisabled = false,
     onbeforeclose,
@@ -32,6 +33,7 @@
     titleIcon?: string;
     wide?: boolean;
     confirm?: boolean;
+    keyboardAware?: boolean;
     showClose?: boolean;
     closeDisabled?: boolean;
     onbeforeclose?: () => boolean;
@@ -52,6 +54,7 @@
   let bodyContent: HTMLDivElement | undefined = $state();
   let dragY = $state(0);
   let dragging = $state(false);
+  let viewport = $state<{ height: number; top: number; bottom: number; keyboard: boolean } | null>(null);
 
   function resetDrag() { dragging = false; dragY = 0; }
   function canDrag(target: HTMLElement) {
@@ -95,6 +98,41 @@
   });
 
   $effect(() => {
+    if (!open || !keyboardAware || !window.visualViewport) return;
+    const visible = window.visualViewport;
+    let width = window.innerWidth;
+    let fullHeight = window.innerHeight;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      if (visible.height <= 0) return;
+      if (width !== window.innerWidth) {
+        width = window.innerWidth;
+        fullHeight = window.innerHeight;
+      }
+      fullHeight = Math.max(fullHeight, window.innerHeight);
+      viewport = {
+        height: visible.height,
+        top: visible.offsetTop,
+        bottom: Math.max(0, window.innerHeight - visible.height - visible.offsetTop),
+        keyboard: fullHeight - visible.height * visible.scale > 100,
+      };
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    visible.addEventListener('resize', schedule);
+    visible.addEventListener('scroll', schedule);
+    window.addEventListener('resize', schedule);
+    measure();
+    return () => {
+      cancelAnimationFrame(frame);
+      visible.removeEventListener('resize', schedule);
+      visible.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      viewport = null;
+    };
+  });
+
+  $effect(() => {
     if (!open || !body || !bodyContent || !footer || wide || confirm) return;
     const container = body, content = bodyContent;
     let frame = 0;
@@ -133,6 +171,11 @@
     class:confirm
     class:message={!children}
     class:dragging
+    class:keyboard-aware={keyboardAware && !!viewport}
+    class:keyboard-open={keyboardAware && !!viewport?.keyboard}
+    style:--sheet-viewport-height={viewport ? `${viewport.height}px` : undefined}
+    style:--sheet-viewport-top={viewport ? `${viewport.top}px` : undefined}
+    style:--sheet-viewport-bottom={viewport ? `${viewport.bottom}px` : undefined}
     style:translate={phone.current && !confirm ? `0 ${dragY}px` : undefined}
     use:portal
     use:verticalDrag={{ canStart: canDrag, move: (distance) => { dragging = true; dragY = distance; }, end: releaseDrag, cancel: resetDrag }}
@@ -194,6 +237,13 @@
   .sheet:global([data-covered]) { pointer-events: none; }
 
   .sheet.dragging { transition: none; user-select: none; }
+
+  .sheet.keyboard-aware {
+    bottom: var(--sheet-viewport-bottom);
+    max-height: min(90dvh, calc(var(--sheet-viewport-height) - max(24px, calc(var(--safe-t) + 12px))));
+  }
+
+  .sheet.keyboard-open { padding-bottom: 0; }
 
   .grip {
     flex: none;
@@ -307,6 +357,12 @@
     .sheet.wide {
       width: min(880px, 94vw);
       max-height: 90vh;
+    }
+
+    .sheet.keyboard-aware {
+      top: calc(var(--sheet-viewport-top) + var(--sheet-viewport-height) / 2);
+      bottom: auto;
+      max-height: min(84vh, calc(var(--sheet-viewport-height) - 32px));
     }
 
     .sheet.wide .body {
