@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { hourNow, todayKey } from '../shared/utils/format';
-  import { isNowMeal, placePrice, sortedPlaces } from '../features/meals/meals';
+  import { isNowMeal, placePrice, studentPlaces } from '../features/meals/meals';
   import { meals } from '../features/meals/meal-resource.svelte';
   import EmptyState from '../shared/ui/EmptyState.svelte';
   import Icon from '../shared/ui/Icon.svelte';
@@ -39,7 +39,7 @@
       {/each}
     </div>
 
-    {#each sortedPlaces(day) as place (place.name)}
+    {#each studentPlaces(day) as place (place.name)}
       <h2 class="section-title place">
         <span>{place.name}</span>
         {#if placePrice(place)}<span class="chip primary">{placePrice(place)}</span>{/if}

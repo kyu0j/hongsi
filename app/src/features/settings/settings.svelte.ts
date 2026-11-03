@@ -8,7 +8,6 @@ import type { AccountPreferences, AccountPreferenceChanges, SemesterDisplay } fr
 
 export type Theme = 'system' | 'light' | 'dark';
 export type Midnight = 'prev' | 'same';
-export type MealPlace = 'dorm' | 'staff';
 type TimetableDisplay = 'full' | 'fit';
 
 export const ALERT_LEADS: { min: number; label: string }[] = [
@@ -23,7 +22,6 @@ export const settings = $state({
   theme: pref<Theme>('theme', 'system'),
   midnight: 'prev' as Midnight,
   showUndatedAssignments: false,
-  mealPlace: 'dorm' as MealPlace,
   timetableDisplay: 'fit' as TimetableDisplay,
   semesterDisplay: 'current' as SemesterDisplay,
   alertLeads: [60],
@@ -42,14 +40,6 @@ export function setTimetableDisplay(value: TimetableDisplay) {
 
 export function setSemesterDisplay(value: SemesterDisplay) {
   changeAccountPreferences({ semesterDisplay: value });
-}
-
-export function setMealPlace(value: MealPlace) {
-  changeAccountPreferences({ mealPlace: value });
-}
-
-export function isPreferredPlace(name: string, place: MealPlace = settings.mealPlace): boolean {
-  return place === 'dorm' ? name.includes('기숙사') : name.includes('교직원');
 }
 
 export function applyTheme(theme: Theme = settings.theme) {
@@ -88,7 +78,6 @@ function apply(value: AccountPreferences, changes: AccountPreferenceChanges = {}
   const next = { ...value, ...changes };
   settings.midnight = next.midnight;
   settings.showUndatedAssignments = next.showUndatedAssignments;
-  settings.mealPlace = next.mealPlace;
   settings.timetableDisplay = next.timetableDisplay;
   settings.semesterDisplay = next.semesterDisplay;
   setCalendarSemesterDisplay(settings.semesterDisplay);

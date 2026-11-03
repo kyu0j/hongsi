@@ -7,14 +7,12 @@
   import {
     accountPreferences,
     refreshAccountPreferences,
-    setMealPlace,
     setTimetableDisplay,
     setSemesterDisplay,
     setShowUndatedAssignments,
     setMidnight,
     setTheme,
     settings,
-    type MealPlace,
     type Midnight,
     type Theme,
   } from './settings.svelte';
@@ -49,11 +47,6 @@
   const MIDNIGHT: { id: Midnight; label: string; hint: string }[] = [
     { id: 'prev', label: '전날 24:00', hint: '10/3 00:00 마감 → 10/2 24:00' },
     { id: 'same', label: '그날 00:00', hint: '클래스룸과 동일하게 10/3 00:00' },
-  ];
-
-  const PLACES: { id: MealPlace; label: string }[] = [
-    { id: 'dorm', label: '제2기숙사' },
-    { id: 'staff', label: '교직원식당' },
   ];
 
   const studentId = $derived(app.profile?.studentId || pref('last-id', ''));
@@ -107,14 +100,6 @@
         {/each}
       </div>
       <p class="set-hint muted">{MIDNIGHT.find((m) => m.id === settings.midnight)?.hint}</p>
-    </div>
-    <div class="set">
-      <span class="set-label">학식 기본 식당</span>
-      <div class="seg" role="radiogroup" aria-label="학식 기본 식당">
-        {#each PLACES as m (m.id)}
-          <button role="radio" aria-checked={settings.mealPlace === m.id} class:on={settings.mealPlace === m.id} disabled={!accountPreferences.loaded} onclick={() => setMealPlace(m.id)}>{m.label}</button>
-        {/each}
-      </div>
     </div>
     <div class="set">
       <span class="set-label">주간 시간표</span>

@@ -4,7 +4,7 @@
   import { isApp } from '../shared/api/api';
   import { toggleDone } from '../features/calendar/actions.svelte';
   import { classWatch } from '../features/attendance/classwatch.svelte';
-  import { currentMealIndex, isNowMeal, placePrice, sortedPlaces } from '../features/meals/meals';
+  import { currentMealIndex, isNowMeal, placePrice, studentPlaces } from '../features/meals/meals';
   import { courseColors } from '../features/calendar/colors';
   import { dayKey, dueDateTime, hourNow, todayKey } from '../shared/utils/format';
   import { homeAgenda, type HomeEntry } from '../features/calendar/home-agenda';
@@ -73,7 +73,7 @@
 
   const todayPlace = $derived.by(() => {
     const day = meals.data?.find((d) => d.date === todayKey());
-    return day ? (sortedPlaces(day)[0] ?? null) : null;
+    return day ? (studentPlaces(day)[0] ?? null) : null;
   });
   const nowIndex = $derived(todayPlace ? currentMealIndex(todayPlace.meals.map((m) => m.name), hourNow()) : 0);
   const narrowMeals = new MediaQuery('max-width: 767px');

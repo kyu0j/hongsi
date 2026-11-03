@@ -161,11 +161,6 @@
     "MH": {
       "places": [
         {
-          "floor": "16",
-          "kind": "food",
-          "name": "교직원식당"
-        },
-        {
           "floor": "1",
           "kind": "printer",
           "name": "프린터"

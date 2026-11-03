@@ -1,5 +1,4 @@
 import type { MealDay, MealPlace } from '../../shared/types';
-import { isPreferredPlace, settings } from '../settings/settings.svelte';
 
 export function placePrice(place: MealPlace): string | null {
   const price = place.meals.find((m) => m.price)?.price ?? null;
@@ -8,9 +7,8 @@ export function placePrice(place: MealPlace): string | null {
   return student ? student[1] : (/([\d,]+원)/.exec(price)?.[1] ?? null);
 }
 
-export function sortedPlaces(day: MealDay): MealPlace[] {
-  const pref = settings.mealPlace;
-  return [...day.places].sort((a, b) => Number(isPreferredPlace(b.name, pref)) - Number(isPreferredPlace(a.name, pref)));
+export function studentPlaces(day: MealDay): MealPlace[] {
+  return day.places.filter((place) => place.name.includes('기숙사') || place.name.includes('학생'));
 }
 
 function mealSlot(hour: number): '아침' | '점심' | '저녁' | null {
