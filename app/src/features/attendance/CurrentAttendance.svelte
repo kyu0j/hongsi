@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { flushSync, onMount } from 'svelte';
+  import { flushSync, onMount, untrack } from 'svelte';
   import { ApiError, api } from '../../shared/api/api';
   import { attendanceFailureMessage } from '../../shared/api/api-error';
   import { currentLocation } from '../../platform/location';
@@ -7,6 +7,7 @@
   import { sentenceLines } from '../../shared/utils/format';
   import { errorText, writeBlocked } from '../../shared/api/net.svelte';
   import { attendance, attendanceReceipts, lectures, timetable } from './attendance-resources.svelte';
+  import { preparedAttendanceLocation } from './attendance-location.svelte';
   import { handleAuthError } from '../auth/auth-state.svelte';
   import { toast } from '../../shared/state/ui.svelte';
   import { refreshState, refreshTab } from '../../shared/state/refresh.svelte';
@@ -32,6 +33,14 @@
   let busy = $state(false);
   let result = $state('');
   let geoRequest = 0;
+  $effect(() => {
+    if (!open || !target) return;
+    const position = preparedAttendanceLocation(target);
+    if (position) untrack(() => {
+      geoRequest++;
+      geo = { state: 'ok', lat: position.latitude, lon: position.longitude, acc: Math.round(position.accuracy) };
+    });
+  });
   const submittedMark = $derived(target ? lectureMark(target) : null);
   const submitted = $derived(isAttended(submittedMark));
 
@@ -77,6 +86,11 @@
 
   async function locate() {
     const request = ++geoRequest;
+    const prepared = target ? preparedAttendanceLocation(target) : null;
+    if (prepared) {
+      geo = { state: 'ok', lat: prepared.latitude, lon: prepared.longitude, acc: Math.round(prepared.accuracy) };
+      return;
+    }
     geo = { state: 'finding' };
     try {
       const p = await currentLocation();
@@ -93,7 +107,8 @@
     result = '';
     busy = true;
     try {
-      const res = await api.submitAttendance(target.key, code.trim(), geo.lat!, geo.lon!);
+      const prepared = preparedAttendanceLocation(target);
+      const res = await api.submitAttendance(target.key, code.trim(), prepared?.latitude ?? geo.lat!, prepared?.longitude ?? geo.lon!);
       const confirmed = afterSubmit(res);
       if (confirmed) {
         open = false;

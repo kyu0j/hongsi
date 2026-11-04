@@ -41,6 +41,7 @@ final class HongsiIOSPlugin: Plugin, QLPreviewControllerDataSource, QLPreviewCon
     private var scopedPreviewURL: URL?
     private var location: HongsiLocation?
     private var mapTracking: MapTracking?
+    private var attendanceTracking: MapTracking?
     private var updater: HongsiAppUpdate?
     private weak var studentCardWebView: WKWebView?
 
@@ -52,7 +53,7 @@ final class HongsiIOSPlugin: Plugin, QLPreviewControllerDataSource, QLPreviewCon
     deinit { NotificationCenter.default.removeObserver(self) }
 
     @objc private func studentCardPause() {
-        Task { @MainActor in mapTracking?.pause() }
+        Task { @MainActor in mapTracking?.pause(); attendanceTracking?.stop() }
         studentCardWebView?.evaluateJavaScript("window.dispatchEvent(new Event('hongsi-pause'))", completionHandler: nil)
     }
     @objc private func studentCardResume() {
@@ -155,6 +156,22 @@ final class HongsiIOSPlugin: Plugin, QLPreviewControllerDataSource, QLPreviewCon
                 default: invoke.reject("위치 요청을 확인해 주세요."); return
                 }
                 invoke.resolve(["headingAvailable": available])
+            } catch { invoke.reject(error.localizedDescription) }
+        }
+    }
+    @objc func attendanceLocation(_ invoke: Invoke) {
+        Task { @MainActor in
+            do {
+                let args = try invoke.parseArgs(MapTrackingArgs.self)
+                switch args.action {
+                case "start":
+                    guard let events = args.events else { invoke.reject("위치 요청을 확인해 주세요."); return }
+                    if attendanceTracking == nil { attendanceTracking = MapTracking() }
+                    attendanceTracking!.start(events)
+                case "stop": attendanceTracking?.stop()
+                default: invoke.reject("위치 요청을 확인해 주세요."); return
+                }
+                invoke.resolve()
             } catch { invoke.reject(error.localizedDescription) }
         }
     }

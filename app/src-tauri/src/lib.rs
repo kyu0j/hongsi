@@ -822,6 +822,23 @@ async fn current_location(app: AppHandle) -> Result<Value, String> {
 }
 
 #[tauri::command]
+fn location_channel(events: tauri::ipc::Channel<Value>) -> u32 { events.id() }
+
+#[tauri::command]
+async fn watch_location(app: AppHandle, action: String, events: String) -> Result<(), String> {
+    if !matches!(action.as_str(), "start" | "stop") || !events.starts_with("__CHANNEL__:") || events.len() > 32 {
+        return Err("위치 요청을 확인해 주세요.".into());
+    }
+    #[cfg(target_os = "ios")]
+    {
+        tauri_plugin_hongsi_ios::location_tracking(&app, "attendanceLocation", serde_json::json!({ "action": action, "events": events })).await?;
+        Ok(())
+    }
+    #[cfg(not(target_os = "ios"))]
+    { let _ = (app, events); Err("이 기기에서는 위치를 확인할 수 없어요.".into()) }
+}
+
+#[tauri::command]
 fn map_tracking_channel(events: tauri::ipc::Channel<Value>) -> u32 { events.id() }
 
 #[tauri::command]
@@ -833,7 +850,7 @@ async fn map_tracking(app: AppHandle, action: String, events: String) -> Result<
     #[cfg(target_os = "android")]
     return android_external::map_tracking(&app, args).await;
     #[cfg(target_os = "ios")]
-    return tauri_plugin_hongsi_ios::map_tracking(&app, args).await;
+    return tauri_plugin_hongsi_ios::location_tracking(&app, "mapTracking", args).await;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     { let _ = (app, args); Err("이 기기에서는 위치를 확인할 수 없어요.".into()) }
 }
@@ -876,6 +893,8 @@ pub fn run_app() {
             open_url,
             reveal_file,
             current_location,
+            watch_location,
+            location_channel,
             map_tracking,
             map_tracking_channel,
             location_permission,

@@ -11,16 +11,21 @@ class MainActivity : TauriActivity() {
   override val handleBackNavigation: Boolean = true
   private var widgetWebView = WeakReference<WebView>(null)
   override fun onWebViewCreate(webView: WebView) { super.onWebViewCreate(webView); widgetWebView = WeakReference(webView) }
-  private fun notifyWidgets() { widgetWebView.get()?.evaluateJavascript("window.dispatchEvent(new Event('hongsi-widget'))", null) }
+  private fun notifyWebView(event: String) { widgetWebView.get()?.evaluateJavascript("window.dispatchEvent(new Event('$event'))", null) }
   override fun onNewIntent(intent: Intent) {
     setIntent(intent)
     WidgetNavigation.accept(intent)
     super.onNewIntent(intent)
-    notifyWidgets()
+    notifyWebView("hongsi-widget")
   }
   override fun onResume() {
     super.onResume()
-    notifyWidgets()
+    notifyWebView("hongsi-resume")
+    notifyWebView("hongsi-widget")
+  }
+  override fun onPause() {
+    notifyWebView("hongsi-pause")
+    super.onPause()
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {

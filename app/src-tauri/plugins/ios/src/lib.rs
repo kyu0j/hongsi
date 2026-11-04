@@ -43,8 +43,8 @@ pub async fn call<R: Runtime>(app: &AppHandle<R>, command: &str, value: &str) ->
 }
 
 #[cfg(target_os = "ios")]
-pub async fn map_tracking<R: Runtime>(app: &AppHandle<R>, args: serde_json::Value) -> Result<serde_json::Value, String> {
-    app.state::<Ios<R>>().0.run_mobile_plugin_async("mapTracking", args).await.map_err(|error| match error {
+pub async fn location_tracking<R: Runtime>(app: &AppHandle<R>, command: &str, args: serde_json::Value) -> Result<serde_json::Value, String> {
+    app.state::<Ios<R>>().0.run_mobile_plugin_async(command, args).await.map_err(|error| match error {
         tauri::plugin::mobile::PluginInvokeError::InvokeRejected(response) => response.message.unwrap_or_else(|| "위치를 확인하지 못했어요.".into()),
         _ => "위치를 확인하지 못했어요.".into(),
     })
