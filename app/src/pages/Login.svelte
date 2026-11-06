@@ -352,7 +352,8 @@
     color: var(--text-2);
   }
 
-  .remember-info:hover {
+  :global(:where(:root[data-input='mouse'])) .remember-info:hover,
+  .remember-info:global([data-pressed]) {
     background: var(--surface-2);
     color: var(--primary);
   }
@@ -435,13 +436,15 @@
       color 0.15s;
   }
 
-  a.gh:hover {
+  :global(:where(:root[data-input='mouse'])) a.gh:hover,
+  a.gh:global([data-pressed]) {
     background: var(--surface-3);
     color: var(--text);
   }
 
   .caution-link { display: inline-flex; align-items: center; gap: 5px; min-height: 40px; color: var(--text-2); border-radius: 8px; }
-  .caution-link:hover { color: var(--primary-text); }
+  :global(:where(:root[data-input='mouse'])) .caution-link:hover,
+  .caution-link:global([data-pressed]) { color: var(--primary-text); }
 
   .sep {
     width: 3px;

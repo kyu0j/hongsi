@@ -299,7 +299,7 @@ a.btn {
   text-decoration: none;
 }
 
-.btn:active {
+.btn[data-pressed] {
   transform: scale(0.98);
 }
 
@@ -314,7 +314,8 @@ a.btn {
   box-shadow: none;
 }
 
-.btn-primary:hover:not(:disabled) {
+:where(:root[data-input='mouse']) .btn-primary:hover:not(:disabled),
+.btn-primary[data-pressed]:not(:disabled) {
   background: var(--primary-hover);
 }
 
@@ -365,7 +366,9 @@ a.btn {
   transition: background 0.15s;
 }
 
-.icon-btn:not(.press-feedback):hover,
+:where(:root[data-input='mouse']) .icon-btn:hover:not(:disabled),
+:where(:root[data-input='mouse']) .press-feedback:hover:not(:disabled),
+.icon-btn[data-pressed],
 .press-feedback[data-pressed] {
   background: var(--surface-3);
 }

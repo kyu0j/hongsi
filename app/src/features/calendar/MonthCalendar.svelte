@@ -330,7 +330,8 @@
     transition: background 0.15s;
   }
 
-  .day:hover {
+  :global(:where(:root[data-input='mouse'])) .day:hover,
+  .day:global([data-pressed]) {
     background: var(--surface-2);
   }
 

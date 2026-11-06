@@ -48,7 +48,7 @@
   section:first-child > .section-title { margin-top: 2px; }
   .links a { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 14px 16px; color: var(--text); text-decoration: none; text-align: left; }
   .links a + a { border-top: 1px solid var(--border); }
-  .links a:active { background: var(--surface-2); }
+  .links a:global([data-pressed]) { background: var(--surface-2); }
   .entry { flex: 1; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
   .links a :global(svg) { flex: none; color: var(--text-3); }
   .groups { display: grid; gap: 10px; }

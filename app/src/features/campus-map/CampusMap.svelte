@@ -3,7 +3,6 @@
   import { isAndroid, isIOS } from '../../platform/env';
   import Icon from '../../shared/ui/Icon.svelte';
   import Sheet from '../../shared/ui/Sheet.svelte';
-  import { pressFeedback } from '../../shared/utils/press-feedback';
   import { toast } from '../../shared/state/ui.svelte';
 
   let open = $state(false);
@@ -28,7 +27,7 @@
 </script>
 
 {#if isAndroid || isIOS}
-<button class="icon-btn press-feedback" use:pressFeedback onclick={show} aria-label="학교 지도" title="학교 지도" aria-busy={loading}>
+<button class="icon-btn press-feedback" onclick={show} aria-label="학교 지도" title="학교 지도" aria-busy={loading}>
   <Icon name="campus-map" size={18} />
 </button>
 <Sheet bind:open title="학교 지도" onclose={() => { settingsOpen = false; outsideMap = false; }}>
@@ -46,6 +45,7 @@
   :global(.sheet > header:has(.map-location-note)) { position: relative; }
   .map-location-note { position: absolute; left: 20px; bottom: -2px; max-width: calc(100% - 40px); margin: 0; font-size: 10px; line-height: 12px; color: var(--text-3); white-space: nowrap; pointer-events: none; }
   .map-settings-button { display: grid; place-items: center; flex: none; width: 32px; height: 36px; border-radius: 9px; color: var(--text-3); }
+  :global(:where(:root[data-input='mouse'])) .map-settings-button:hover,
+  .map-settings-button:global([data-pressed]) { color: var(--text); background: var(--surface-2); }
   .map-settings-button[aria-expanded='true'] { color: var(--primary-text); background: var(--primary-weak); }
-  @media (hover: hover) { .map-settings-button:hover { color: var(--text); background: var(--surface-2); } }
 </style>

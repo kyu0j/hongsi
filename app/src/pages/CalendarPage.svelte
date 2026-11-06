@@ -675,7 +675,8 @@
     text-align: left;
     transition: background 0.12s;
   }
-  .pop-row:hover {
+  :global(:where(:root[data-input='mouse'])) .pop-row:hover,
+  .pop-row:global([data-pressed]) {
     background: var(--surface-2);
   }
   .shape {

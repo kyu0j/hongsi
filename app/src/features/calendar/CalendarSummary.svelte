@@ -73,7 +73,8 @@
       border-color 0.15s,
       box-shadow 0.15s;
   }
-  .stat:hover {
+  :global(:where(:root[data-input='mouse'])) .stat:hover,
+  .stat:global([data-pressed]) {
     border-color: var(--border-strong);
   }
   .stat.on {

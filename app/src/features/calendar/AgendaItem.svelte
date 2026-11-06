@@ -84,7 +84,8 @@
   .check::before { content: ''; position: absolute; width: 23px; height: 23px; border-radius: 8px; border: 1.5px solid var(--border-strong); transition: background 150ms, border-color 150ms; }
   .check.on::before { background: var(--ok); border-color: var(--ok); }
   .check :global(svg) { position: relative; z-index: 1; }
-  .check:hover { background: var(--surface-2); }
+  :global(:where(:root[data-input='mouse'])) .check:hover,
+  .check:global([data-pressed]) { background: var(--surface-2); }
 
   .main {
     flex: 1;

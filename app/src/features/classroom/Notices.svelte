@@ -8,7 +8,6 @@
   import { readUserData, writeUserData } from '../../shared/state/session';
   import { watchVisibleRefresh } from '../../shared/state/visible-refresh';
   import { focus, go, toastOnce } from '../../shared/state/ui.svelte';
-  import { pressFeedback } from '../../shared/utils/press-feedback';
   import type { ClassNotification } from '../../shared/types';
   import EmptyState from '../../shared/ui/EmptyState.svelte';
   import DownloadIcon from '../files/DownloadIcon.svelte';
@@ -147,7 +146,7 @@
     Promise.all([notices.load(periodic), syncSeen()])));
 </script>
 
-<button class="bell press-feedback" use:pressFeedback onclick={show} aria-label={unread ? `새 알림 ${unread}개` : '알림'}>
+<button class="bell press-feedback" onclick={show} aria-label={unread ? `새 알림 ${unread}개` : '알림'}>
   <Icon name="bell" size={22} />
   {#if unread}<span class="badge">{unread > 9 ? '9+' : unread}</span>{/if}
 </button>
@@ -236,7 +235,8 @@
     text-decoration: none;
   }
 
-  a:not(.file-download):hover {
+  :global(:where(:root[data-input='mouse'])) a:not(.file-download):hover,
+  a:not(.file-download):global([data-pressed]) {
     background: var(--surface-2);
   }
 

@@ -209,7 +209,7 @@
   .me-info h3, .me-info p { max-width: 100%; overflow-wrap: anywhere; }
   .me-info .chip { max-width: 100%; white-space: normal; }
   .qr-button { display: grid; place-items: center; flex: none; width: 48px; height: 48px; border-radius: 14px; color: var(--primary); background: var(--surface); }
-  .qr-button:active { background: var(--surface-3); }
+  .qr-button:global([data-pressed]) { background: var(--surface-3); }
 
   h3 {
     font-size: 20px;

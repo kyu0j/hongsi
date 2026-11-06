@@ -119,7 +119,8 @@
     color: var(--text-3);
   }
 
-  .clear:hover {
+  :global(:where(:root[data-input='mouse'])) .clear:hover,
+  .clear:global([data-pressed]) {
     background: var(--surface-3);
     color: var(--text);
   }

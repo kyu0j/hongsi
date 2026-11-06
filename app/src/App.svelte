@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import { watchPressFeedback } from './shared/utils/press-feedback';
   import { clock, watchClock } from './shared/state/clock.svelte';
   import { watchCalendarState } from './features/calendar/calendar-sync.svelte';
   import { watchAppUpdates } from './features/updates/app-update.svelte';
@@ -46,6 +47,7 @@
   import SeatsPage from './pages/SeatsPage.svelte';
 
   const TITLES = { home: '홈', calendar: '캘린더', seats: '열람실', attendance: '출결', meals: '학식' } as const;
+  onMount(watchPressFeedback);
   const downloadPage = !isApp && ['/download', '/download/versions', '/download/ios'].includes(location.pathname.replace(/\/$/, ''));
 
   const today = $derived(dayKey(clock.now));
@@ -541,7 +543,8 @@
     border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--border));
   }
 
-  .nav.app-download:hover {
+  :global(:where(:root[data-input='mouse'])) .nav.app-download:hover,
+  .nav.app-download:global([data-pressed]) {
     background: color-mix(in srgb, var(--primary) 15%, var(--surface));
   }
 
@@ -634,7 +637,8 @@
         color 0.15s;
     }
 
-    .nav:hover {
+    :global(:where(:root[data-input='mouse'])) .nav:hover,
+    .nav:global([data-pressed]) {
       background: var(--surface-2);
       color: var(--text-2);
     }
@@ -753,7 +757,8 @@
         border-color 0.15s;
     }
 
-    .account:hover {
+    :global(:where(:root[data-input='mouse'])) .account:hover,
+    .account:global([data-pressed]) {
       background: var(--surface-3);
       border-color: var(--border-strong);
     }
@@ -793,7 +798,7 @@
 
   .tab .nav-ico { width: 52px; height: 30px; place-items: center; border-radius: 12px; transition: background 160ms, transform 160ms; }
   .tab[aria-current='page'] .nav-ico { background: var(--primary-weak); }
-  .tab:active .nav-ico { transform: scale(.92); }
+  .tab:global([data-pressed]) .nav-ico { transform: scale(.92); }
   .avatar-btn { min-width: 44px; min-height: 44px; display: grid; place-items: center; }
   .tabbar { background: var(--surface); backdrop-filter: none; padding-top: 6px; }
   .page-title { letter-spacing: -.045em; }

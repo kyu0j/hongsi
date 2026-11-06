@@ -275,7 +275,8 @@
     padding: 4px 6px;
   }
 
-  .bld:hover { background: var(--surface-2); }
+  :global(:where(:root[data-input='mouse'])) .bld:hover,
+  .bld:global([data-pressed]) { background: var(--surface-2); }
 
   .building-name {
     display: inline-flex;

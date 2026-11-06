@@ -102,7 +102,8 @@
     cursor: default;
   }
 
-  .seat:not(:disabled):hover {
+  :global(:where(:root[data-input='mouse'])) .seat:not(:disabled):hover,
+  .seat:not(:disabled):global([data-pressed]) {
     transform: scale(1.12);
     box-shadow: var(--shadow);
     z-index: 1;

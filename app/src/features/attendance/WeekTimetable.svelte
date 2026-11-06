@@ -205,7 +205,7 @@
     transition: transform 0.1s;
   }
 
-  .blk:active {
+  .blk:global([data-pressed]) {
     transform: scale(0.98);
   }
 

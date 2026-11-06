@@ -228,7 +228,8 @@
   .version { display: flex; flex-wrap: wrap; gap: 2px 4px; color: var(--text-3); font-size: 13px; line-height: 1.6; }
   .version span { white-space: nowrap; }
   .versions-link { flex: none; display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; min-height: 44px; margin-block: -11px; color: var(--text-2); font-size: 13px; }
-  .versions-link:hover { color: var(--primary-text); }
+  :global(:where(:root[data-input='mouse'])) .versions-link:hover,
+  .versions-link:global([data-pressed]) { color: var(--primary-text); }
   .status, .loading-status { line-height: 1.65; margin-bottom: 12px; text-wrap: pretty; }
   .status { padding: 20px; border: 1px dashed var(--border-strong); border-radius: var(--radius); }
   .error-status { display: flex; align-items: center; gap: 14px; }
@@ -241,7 +242,8 @@
   .latest-changes summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; cursor: pointer; list-style: none; }
   .latest-changes summary::-webkit-details-marker { display: none; }
   .latest-changes summary h2 { margin: 0; }
-  .latest-changes summary:hover { color: var(--primary-text); }
+  :global(:where(:root[data-input='mouse'])) .latest-changes summary:hover,
+  .latest-changes summary:global([data-pressed]) { color: var(--primary-text); }
   .latest-chevron { display: inline-flex; color: var(--text-3); }
   .latest-changes[open] .latest-chevron { transform: rotate(180deg); }
   .latest-changes .notes { padding: 4px 0 16px; }
@@ -250,7 +252,8 @@
   .history-heading h1 { margin: 0; font-size: 16px; letter-spacing: normal; line-height: 1.8; }
   .history-all { display: inline-flex; align-items: center; gap: 4px; color: var(--text-2); font-size: 13px; }
   .history-all { white-space: nowrap; }
-  .history-all:hover { color: var(--primary-text); }
+  :global(:where(:root[data-input='mouse'])) .history-all:hover,
+  .history-all:global([data-pressed]) { color: var(--primary-text); }
   .history-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; margin: 20px 0 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
   .history-tabs button { min-height: 40px; border-radius: 8px; color: var(--text-2); font-size: 14px; font-weight: 650; }
   .history-tabs button[aria-selected="true"] { background: var(--primary-weak); color: var(--primary-text); }
@@ -260,7 +263,8 @@
   .release-entry { border-top: 1px solid var(--border); }
   .release-info { grid-column: 1; display: block; min-width: 0; }
   .release-toggle { grid-column: 1 / -1; grid-row: 1; display: grid; grid-template-columns: subgrid; align-items: center; min-width: 0; min-height: 44px; text-align: left; color: var(--text); }
-  .release-toggle:hover { color: var(--primary-text); }
+  :global(:where(:root[data-input='mouse'])) .release-toggle:hover,
+  .release-toggle:global([data-pressed]) { color: var(--primary-text); }
   .release-chevron { grid-column: 3; display: inline-flex; color: var(--text-3); }
   .release-chevron.expanded { transform: rotate(180deg); }
   .release-change { padding: 4px 0 16px; font-size: 14px; }
@@ -281,7 +285,8 @@
   .ios-status { font-size: 16px; color: var(--text); margin-top: 20px; }
   .ios-status strong { font-weight: 750; }
   .ios-guide-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--text); text-decoration: none; }
-  .ios-guide-link:hover { color: var(--primary-text); }
+  :global(:where(:root[data-input='mouse'])) .ios-guide-link:hover,
+  .ios-guide-link:global([data-pressed]) { color: var(--primary-text); }
   .ios-page { max-width: 720px; }
   .ios-intro { max-width: 560px; margin: 0 auto; }
   .ios-support { border-bottom: 1px solid var(--border); }

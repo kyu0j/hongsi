@@ -433,7 +433,8 @@
       box-shadow 0.15s;
   }
 
-  .week:hover,
+  :global(:where(:root[data-input='mouse'])) .week:hover,
+  .week:global([data-pressed]),
   .week.on {
     background: var(--surface-3);
   }
