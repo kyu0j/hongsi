@@ -138,7 +138,7 @@
       {@render viewSwitch()}
     {/if}
   </h2>
-  <LoadError resource={timetable} what="시간표를" stale={false} />
+  <LoadError resource={timetable} what="시간표를" />
   {#if !timetable.data}
     {#if !timetable.error}<Skeleton rows={2} height={52} />{/if}
   {:else if today.length}
@@ -203,7 +203,7 @@
     </div>
     {#if attendance.at}<span class="updated muted small">{ago(attendance.at / 1000)} 업데이트</span>{/if}
   </div>
-  <LoadError resource={attendance} what="출결 현황을" stale={false} />
+  <LoadError resource={attendance} what="출결 현황을" />
   {#if !attendance.data}
     {#if !attendance.error}<Skeleton rows={3} height={120} />{/if}
   {:else}

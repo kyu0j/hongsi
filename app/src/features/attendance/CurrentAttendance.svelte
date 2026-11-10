@@ -167,7 +167,6 @@
   {:else if failed}
     <div class="empty-state" role="status">
       <h2>{title}</h2>
-      {#if schedule}<span class="schedule">{schedule}</span>{/if}
     </div>
   {:else}
     <div class="empty-state" role="status">
@@ -175,7 +174,7 @@
     </div>
   {/if}
   {#if lectures.error && !failed}<p class="error-message small sentence-message" role="status">{sentenceLines(lectures.error)}</p>{/if}
-  {#if attendanceReceipts.error}<p class="muted small" role="status">출석 기록을 불러오지 못했어요.</p>{/if}
+  {#if attendanceReceipts.error && !failed}<p class="receipt-error muted small" role="status">출석 기록을 불러오지 못했어요.</p>{/if}
   </div>
 </section>
 
@@ -243,6 +242,7 @@
   .now h2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .small { font-size: 12.5px; font-weight: 500; }
   .error-message { color: var(--danger); }
+  .receipt-error { margin: 0; text-align: center; }
 
   .attend {
     display: grid;

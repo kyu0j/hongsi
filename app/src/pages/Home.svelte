@@ -185,7 +185,7 @@
     <button class="link" onclick={() => go('meals')}>식단 전체</button>
   </h2>
   {#if !meals.data}
-    {#if meals.error}<LoadError resource={meals} what="학식을" stale={false} />{:else}<Skeleton rows={1} height={150} />{/if}
+    {#if meals.error}<LoadError resource={meals} what="학식을" />{:else}<Skeleton rows={1} height={150} />{/if}
   {:else if !todayPlace}
     <div class="empty card"><strong>오늘은 학식 메뉴가 없어요.</strong>주말·공휴일에는 운영하지 않을 수 있어요.</div>
   {:else}
