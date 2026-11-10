@@ -12,6 +12,7 @@
     timeout = 0,
     label = '',
     role = 'dialog',
+    interactive = false,
     onclose,
     children,
   }: {
@@ -21,6 +22,7 @@
     timeout?: number;
     label?: string;
     role?: 'dialog' | 'tooltip';
+    interactive?: boolean;
     onclose?: () => void;
     children: Snippet;
   } = $props();
@@ -140,6 +142,7 @@
     class="pop {side}"
     class:shown
     class:tip={role === 'tooltip'}
+    class:interactive
     use:portal
     bind:this={el}
     {role}
@@ -193,6 +196,10 @@
     color: var(--surface);
     border-color: transparent;
     pointer-events: none;
+  }
+
+  .pop.tip.interactive {
+    pointer-events: auto;
   }
 
   .pop::after {
