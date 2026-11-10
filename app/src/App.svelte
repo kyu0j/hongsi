@@ -306,7 +306,6 @@
             <Notices />
             <button class="avatar-btn" onclick={() => (profileOpen = true)} aria-label="설정 열기"><Avatar size={34} /></button>
           </div>
-          <ConnBanner />
         </header>
         <main>
           {#key route.tab}
@@ -340,6 +339,7 @@
       {/each}
     </nav>
   </div>
+  <ConnBanner topbarHeight={topH} />
   <ProfileSheet bind:open={profileOpen} onlogout={() => logout('device')} onlogoutall={() => logout('all')} ondeletedata={() => logout('delete')} />
   <PermissionsIntro />
   <DoneConfirm />
