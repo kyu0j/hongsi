@@ -43,12 +43,11 @@ export function onSessionRevoked(listener: () => void) {
   return () => sessionRevokedListeners.delete(listener);
 }
 
-const SCHOOL_PATH = /^\/api\/(calendar(\?|$)|attendance\/|timetable|notifications|assign\/|modules\/|board\/)/;
+const SCHOOL_PATH = /^\/api\/(auth\/recover$|calendar(\?|$)|attendance\/|timetable|notifications|assign\/|modules\/|board\/)/;
 
 function note(path: string, status: number, data: unknown, server?: boolean | null) {
   const code = errorOf(data)?.code ?? '';
-  if ((path === '/api/auth/recover' && status >= 400)
-    || (status === 401 && (code === 'session_expired' || code === 'classroom_token_expired'))) return;
+  if (status === 401 && (code === 'session_expired' || code === 'classroom_token_expired')) return;
   if (isApp) {
     if (typeof server === 'boolean') reportServer(server);
   } else {
@@ -91,8 +90,8 @@ async function recoverSchoolAuth(e: ApiError, path: string, check: () => void) {
     check();
   } catch (recoveryError) {
     check();
-    if (recoveryError instanceof ApiError && recoveryError.code === 'session_revoked') throw recoveryError;
-    throw new ApiError(409, 'school_reauth_required', '로그인이 만료됐어요.');
+    if (schoolAuthError(recoveryError)) throw new ApiError(409, 'school_reauth_required', '로그인이 만료됐어요.');
+    throw recoveryError;
   }
 }
 
@@ -177,7 +176,7 @@ async function sendRequest<T>(method: string, path: string, body: unknown, check
       if (e instanceof ReadTimeoutError) {
         throw connectionError(true, { method, path, format });
       }
-      if (path !== '/api/auth/recover') reportServer(false);
+      reportServer(false);
       throw connectionError(false, { method, path, format });
     }
     check();

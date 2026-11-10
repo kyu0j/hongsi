@@ -349,7 +349,6 @@ where
     }
     let seen = shell.direct.generation();
     let mut reply = f().await;
-    let school_expired = matches!(reply.code(), Some("session_expired" | "classroom_token_expired"));
     let recovery = if reply.code() == Some("classroom_token_expired") {
         Some(refresh_classroom(shell, seen).await)
     } else if reply.needs_login() && reply.code() != Some("session_revoked") {
@@ -360,10 +359,6 @@ where
     if let Some(recovery) = recovery {
         reply = match recovery {
             Ok(()) => f().await,
-            Err(e) if school_expired && e.code() != Some("session_revoked") => {
-                tracing::warn!(status = e.status, code = e.code(), "만료된 학교 인증 복구 실패");
-                Reply::error(401, "session_expired", "로그인이 만료됐어요.")
-            }
             Err(e) => e,
         };
     }
