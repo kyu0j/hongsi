@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 
 class MainActivity : TauriActivity() {
   override val handleBackNavigation: Boolean = true
+  internal val attendanceLocation by lazy { AttendanceLocation(this) }
   private var widgetWebView = WeakReference<WebView>(null)
   override fun onWebViewCreate(webView: WebView) { super.onWebViewCreate(webView); widgetWebView = WeakReference(webView) }
   private fun notifyWebView(event: String) { widgetWebView.get()?.evaluateJavascript("window.dispatchEvent(new Event('$event'))", null) }
@@ -20,10 +21,12 @@ class MainActivity : TauriActivity() {
   }
   override fun onResume() {
     super.onResume()
+    attendanceLocation.locate()
     notifyWebView("hongsi-resume")
     notifyWebView("hongsi-widget")
   }
   override fun onPause() {
+    attendanceLocation.cancel()
     notifyWebView("hongsi-pause")
     super.onPause()
   }

@@ -98,7 +98,7 @@ pub struct SchoolSession {
     pub(crate) cookie_jar: Arc<Jar>,
     pub(crate) client: Client,
     pub(crate) no_redirect: Client,
-    pub(crate) attendance_ready: OnceCell<()>,
+    pub(crate) attendance_ready: OnceCell<tokio::sync::Mutex<crate::attendance::AttendancePage>>,
     pub(crate) calendar_school_cache: crate::calendar_cache::SchoolCalendarCache,
     pub(crate) assignment_budget: tokio::sync::Semaphore,
     pub(crate) enrolled_courses: tokio::sync::Mutex<Option<(std::time::Instant, Vec<crate::timetable::EnrolledCourse>)>>,

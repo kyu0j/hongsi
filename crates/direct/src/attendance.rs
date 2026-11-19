@@ -7,14 +7,16 @@ use serde_json::{json, Value};
 use crate::{cached, Direct, Reply, School, R};
 
 impl Direct {
-    pub(super) async fn lectures(&self, s: &School) -> R<ActiveLectures> {
+    pub(super) async fn lectures(s: &School) -> R<ActiveLectures> {
         let mut slot = s.lectures.lock().await;
         if let Some(data) = cached(&slot, Duration::from_secs(3)) {
-            return Ok(data);
+            return data;
         }
-        let data = s.session.active_lectures().await?;
-        *slot = Some((Instant::now(), data.clone()));
-        Ok(data)
+        let result = s.session.active_lectures().await.map_err(Reply::from);
+        if result.is_ok() || result.as_ref().is_err_and(Reply::needs_login) {
+            *slot = Some((Instant::now(), result.clone()));
+        }
+        result
     }
 
     pub(super) async fn submit_attendance(&self, b: &Value) -> R<Value> {

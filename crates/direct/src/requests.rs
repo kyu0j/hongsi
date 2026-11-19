@@ -33,7 +33,7 @@ impl Direct {
             ("GET", "/api/me") => self.me().await.map(Reply::ok),
             ("GET", "/api/attendance/active") => {
                 let s = self.current().await?;
-                Ok(Reply::ok(json!(self.lectures(&s).await?)))
+                Ok(Reply::ok(json!(Self::lectures(&s).await?)))
             }
             ("POST", "/api/attendance/submit") => self.submit_attendance(&json_body).await.map(Reply::ok),
             ("GET", "/api/attendance/status") => {

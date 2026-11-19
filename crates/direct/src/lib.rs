@@ -22,7 +22,7 @@ use tokio::sync::{Mutex, RwLock};
 
 const MB: u64 = 1024 * 1024;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Reply {
     pub status: u16,
     pub body: Value,
@@ -87,7 +87,7 @@ struct School {
     session: SchoolSession,
     student_id: String,
     calendar: Mutex<hongsi_core::calendar_cache::CalendarResults>,
-    lectures: Mutex<Option<(Instant, ActiveLectures)>>,
+    lectures: Mutex<Option<(Instant, R<ActiveLectures>)>>,
     courses: Mutex<HashMap<String, (Instant, AttendanceCourse)>>,
 }
 

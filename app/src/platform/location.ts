@@ -1,40 +1,9 @@
 import { isAndroid, isIOS } from './env';
-import { Channel, invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
 import type { LocationFix } from '../features/campus-map/location-filter';
-
-type LocationEvent = { type: 'position'; position: LocationFix } | { type: 'error'; message: string };
-let locationQueue: Promise<unknown> = Promise.resolve();
-let locationEvents: Channel<LocationEvent> | undefined;
-let locationReceive: ((event: LocationEvent) => void) | null = null;
-let locationConnected = false;
 
 export function watchLocation(receive: (position: LocationFix) => void, failed: () => void): () => void {
   let active = true;
-  if (isIOS) {
-    const receiveNative = (event: LocationEvent) => {
-      if (!active) return;
-      if (event.type === 'position') receive(event.position);
-      else failed();
-    };
-    locationReceive = receiveNative;
-    locationEvents ??= new Channel<LocationEvent>((event) => locationReceive?.(event));
-    const events = locationEvents;
-    const command = (action: string) => {
-      const result = locationQueue.then(async () => {
-        if (action === 'start' && !active) return;
-        if (!locationConnected) { await invoke('location_channel', { events }); locationConnected = true; }
-        return invoke('watch_location', { action, events });
-      });
-      locationQueue = result.catch(() => {});
-      return result;
-    };
-    void command('start').catch(() => { if (active) failed(); });
-    return () => {
-      active = false;
-      if (locationReceive === receiveNative) locationReceive = null;
-      void command('stop').catch(() => {});
-    };
-  }
   if (!('geolocation' in navigator)) throw new Error('이 기기에서는 위치를 확인할 수 없어요.');
   const id = navigator.geolocation.watchPosition(
     ({ coords, timestamp }) => {
@@ -79,14 +48,14 @@ export async function locationPermission(action: 'check' | 'request' | 'settings
   ));
 }
 
-export async function currentLocation(options: { maximumAge?: number } = {}): Promise<{ latitude: number; longitude: number; accuracy: number }> {
-  if (isIOS) {
+export async function currentLocation(): Promise<{ latitude: number; longitude: number; accuracy?: number | null }> {
+  if (isAndroid || isIOS) {
     return invoke('current_location');
   }
   if (!('geolocation' in navigator)) throw new Error('이 기기에서는 위치를 확인할 수 없어요.');
   return new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(
     ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy }),
     (error) => reject(new Error(error.code === 1 ? '위치 권한을 허용해 주세요.' : '위치를 찾지 못했어요.')),
-    { enableHighAccuracy: true, timeout: 12_000, maximumAge: options.maximumAge ?? 30_000 },
+    { enableHighAccuracy: true, timeout: 12_000, maximumAge: 30_000 },
   ));
 }

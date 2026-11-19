@@ -1,4 +1,5 @@
 import { untrack } from 'svelte';
+import { isAndroid, isIOS } from '../../platform/env';
 import { locationPermission, watchLocation } from '../../platform/location';
 import { clock } from '../../shared/state/clock.svelte';
 import type { ActiveLecture } from '../../shared/types';
@@ -7,20 +8,26 @@ import { inWindow, isAttended, lectureMark, lectureSession, markFor, POLL_MS, to
 import { timetable } from './attendance-resources.svelte';
 
 const MAX_AGE = 15_000;
-export const attendanceLocation = $state({ position: null as LocationFix | null });
+const attendanceLocation = $state({ position: null as LocationFix | null });
 
 function needed(now = Date.now()) {
   return todaySessions(timetable.data?.slots ?? [], now).some((session) => inWindow(session, now) && !isAttended(markFor(session)));
 }
 
 export function preparedAttendanceLocation(lecture: ActiveLecture): LocationFix | null {
+  if (isAndroid || isIOS) return null;
   const now = Date.now(), session = lectureSession(lecture, now), position = attendanceLocation.position;
   if (document.hidden || !session || !inWindow(session, now) || isAttended(lectureMark(lecture))
-    || !position || now - position.timestamp > MAX_AGE || position.timestamp > now + 5000) return null;
+    || !position || !freshAttendancePosition(position.timestamp, now)) return null;
   return position;
 }
 
+function freshAttendancePosition(timestamp: number, now = Date.now()) {
+  return timestamp >= now - MAX_AGE && timestamp <= now + 5000;
+}
+
 export function watchAttendanceLocation(): () => void {
+  if (isAndroid || isIOS) return () => {};
   let disposed = false, paused = false, enabled = false, checking = false, generation = 0, lastAttempt = 0;
   let cancel: (() => void) | null = null;
   let filter = createLocationFilter();
@@ -57,7 +64,7 @@ export function watchAttendanceLocation(): () => void {
     untrack(() => { void sync(); });
   });
   const changed = () => { enabled = untrack(() => needed()); void sync(); };
-  const pause = () => { paused = true; stop(); };
+  const pause = () => { paused = true; stop(); lastAttempt = 0; };
   const resume = () => { paused = false; changed(); };
   document.addEventListener('visibilitychange', changed);
   window.addEventListener('hongsi-pause', pause);

@@ -11,7 +11,7 @@ use hongsi_direct::{AuthSnapshot, Direct, Reply};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::async_runtime::Mutex;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 #[cfg(target_os = "android")]
 mod android_external;
@@ -105,6 +105,7 @@ async fn app_update(
 }
 
 struct Shell {
+    app_handle: OnceLock<AppHandle>,
     direct: Direct,
     student_cards: hongsi_student_card::StudentCards,
     credentials: credentials::Store,
@@ -117,6 +118,7 @@ struct Shell {
 static SHARED_SHELL: OnceLock<Arc<Shell>> = OnceLock::new();
 fn shared_shell(credentials: credentials::Store) -> Arc<Shell> {
     SHARED_SHELL.get_or_init(|| Arc::new(Shell {
+        app_handle: OnceLock::new(),
         direct: Direct::new(server_base()), credentials,
         student_cards: hongsi_student_card::StudentCards::default(),
         login_lock: Mutex::new(()), saved: Mutex::new(CredentialState::default()),
@@ -253,6 +255,9 @@ async fn relogin(shell: &Shell, seen: u64) -> Result<(), Reply> {
     let reply = shell.direct.login(&saved.id, &saved.password, true).await;
     match reply.status {
         200 => {
+            if let Some(app) = shell.app_handle.get() {
+                let _ = app.emit("hongsi-school-reconnected", ());
+            }
             if persist_auth_locked(shell).await.is_err() {
                 tracing::warn!("갱신한 자동 로그인 인증값을 기기 보안 저장소에 보관하지 못했어요");
             }
@@ -336,7 +341,7 @@ async fn refresh_classroom(shell: &Shell, seen: u64) -> Result<(), Reply> {
     }
 }
 
-async fn call<F, Fut>(shell: &Shell, f: F) -> Reply
+async fn call<F, Fut>(shell: &Arc<Shell>, defer_save: bool, f: F) -> Reply
 where
     F: Fn() -> Fut,
     Fut: Future<Output = Reply>,
@@ -369,6 +374,17 @@ where
             "session_revoked",
             "다시 로그인해 주세요.",
         );
+    }
+    if defer_save && reply.status == 200 {
+        let shell = Arc::clone(shell);
+        let generation = shell.direct.generation();
+        tauri::async_runtime::spawn(async move {
+            let _operations = shell.operations.read().await;
+            let _login = shell.login_lock.lock().await;
+            if shell.direct.generation() == generation && persist_auth_locked(&shell).await.is_err() {
+                tracing::warn!("자동 로그인 인증값을 기기 보안 저장소에 보관하지 못했어요");
+            }
+        });
     } else {
         persist_auth(shell).await;
     }
@@ -445,7 +461,8 @@ async fn api(
     }
 
     let _operations = shell.operations.read().await;
-    let reply = call(&shell, || {
+    let defer_save = method == "GET" && matches!(path.as_str(), "/api/me" | "/api/attendance/active");
+    let reply = call(&shell, defer_save, || {
         shell.direct.request(&method, &path, body.clone())
     })
     .await;
@@ -533,7 +550,7 @@ async fn submit_assignment(
 #[tauri::command]
 async fn submission_status(shell: State<'_, Arc<Shell>>, cmid: i64, job_id: String, verify: bool) -> Result<ApiResponse, String> {
     let _operations = shell.operations.read().await;
-    let reply = call(&shell, || shell.direct.submission_status(cmid, &job_id, verify)).await;
+    let reply = call(&shell, false, || shell.direct.submission_status(cmid, &job_id, verify)).await;
     Ok(respond(&shell, reply))
 }
 
@@ -810,27 +827,12 @@ async fn location_permission(app: AppHandle, action: String) -> Result<Value, St
 
 #[tauri::command]
 async fn current_location(app: AppHandle) -> Result<Value, String> {
+    #[cfg(target_os = "android")]
+    return android_external::attendance_position(&app).await;
     #[cfg(target_os = "ios")]
     return tauri_plugin_hongsi_ios::call(&app, "currentLocation", "").await;
-    #[cfg(not(target_os = "ios"))]
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     { let _ = app; Err("이 기기에서는 위치를 확인할 수 없어요.".into()) }
-}
-
-#[tauri::command]
-fn location_channel(events: tauri::ipc::Channel<Value>) -> u32 { events.id() }
-
-#[tauri::command]
-async fn watch_location(app: AppHandle, action: String, events: String) -> Result<(), String> {
-    if !matches!(action.as_str(), "start" | "stop") || !events.starts_with("__CHANNEL__:") || events.len() > 32 {
-        return Err("위치 요청을 확인해 주세요.".into());
-    }
-    #[cfg(target_os = "ios")]
-    {
-        tauri_plugin_hongsi_ios::location_tracking(&app, "attendanceLocation", serde_json::json!({ "action": action, "events": events })).await?;
-        Ok(())
-    }
-    #[cfg(not(target_os = "ios"))]
-    { let _ = (app, events); Err("이 기기에서는 위치를 확인할 수 없어요.".into()) }
 }
 
 #[tauri::command]
@@ -868,7 +870,9 @@ pub fn run_app() {
         .plugin(tauri_plugin_notifications::init())
         .plugin(credentials::init())
         .setup(move |app| {
-            app.manage(shared_shell(app.state::<credentials::Store>().inner().clone()));
+            let shell = shared_shell(app.state::<credentials::Store>().inner().clone());
+            let _ = shell.app_handle.set(app.handle().clone());
+            app.manage(shell);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -888,8 +892,6 @@ pub fn run_app() {
             open_url,
             reveal_file,
             current_location,
-            watch_location,
-            location_channel,
             map_tracking,
             map_tracking_channel,
             location_permission,

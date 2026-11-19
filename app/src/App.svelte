@@ -25,7 +25,7 @@
   import { app, endSession, logoutSession, startSession } from './features/auth/auth-state.svelte';
   import { calendar, ensureCalendarArchive, refreshCurrentCalendar } from './features/calendar/calendar-resources.svelte';
   import { lectures, timetable, refreshTimetableForTerm } from './features/attendance/attendance-resources.svelte';
-  import { watchAttendanceReceipts } from './features/attendance/classwatch.svelte';
+  import { useClassWatch, watchAttendanceReceipts } from './features/attendance/classwatch.svelte';
   import { watchAttendanceLocation } from './features/attendance/attendance-location.svelte';
   import { seatSession } from './features/seats/seat-resources.svelte';
   import { todos } from './features/calendar/todo-resource.svelte';
@@ -61,6 +61,11 @@
   let profileOpen = $state(false);
   let bootError = $state('');
   let booting = false;
+
+  $effect.pre(() => {
+    if (!app.profile || app.loggingOut || app.booting || (route.tab !== 'home' && route.tab !== 'attendance')) return;
+    return untrack(useClassWatch);
+  });
 
   $effect(() => {
     if (app.booting || app.loggingOut || !app.profile || !timetable.data || timetable.loading) return;

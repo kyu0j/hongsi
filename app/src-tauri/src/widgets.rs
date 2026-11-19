@@ -60,7 +60,7 @@ async fn request(r: Request) -> Value {
     if r.path == "/api/attendance/receipts" && r.method == "PUT" {
         if let Some(Value::Object(value)) = body.as_mut() { value.insert("account".into(), json!(account)); }
     }
-    let reply = call(shell, || shell.direct.request(&r.method, &r.path, body.clone())).await;
+    let reply = call(shell, false, || shell.direct.request(&r.method, &r.path, body.clone())).await;
     json!({"status":reply.status,"body":reply.body,"owner":owner})
 }
 

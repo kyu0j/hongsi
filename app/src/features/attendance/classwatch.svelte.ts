@@ -1,4 +1,4 @@
-import { api } from '../../shared/api/api';
+import { api, isApp } from '../../shared/api/api';
 import { dayKey, todayKey } from '../../shared/utils/format';
 import { attendance, attendanceReceipts, lectures, timetable } from './attendance-resources.svelte';
 import { handleAuthError } from '../auth/auth-state.svelte';
@@ -28,6 +28,7 @@ function loadSaved(): SavedReceipt[] {
 }
 export const classWatch = $state({
   current: null as TodayClass | null,
+  activeSince: Date.now(),
   nextAt: 0, polling: false, now: Date.now(), day: todayKey(),
   receipts: loadSaved(),
   school: {} as Record<string, { course: AttendanceCourse; at: number }>,
@@ -206,21 +207,37 @@ export function watchAttendanceReceipts(): () => void {
 
 export function useClassWatch(): () => void {
   users++;
+  let disposed = false;
+  let stopRecovery: (() => void) | undefined;
+  if (isApp) {
+    const version = sessionVersion();
+    let checkingRecovery = false;
+    void import('@tauri-apps/api/event').then(({ listen }) => listen('hongsi-school-reconnected', async () => {
+      if (disposed || checkingRecovery || !isCurrentSession(version) || document.visibilityState !== 'visible') return;
+      checkingRecovery = true;
+      try { await lectures.refresh(); } finally { checkingRecovery = false; }
+    })).then((stop) => { if (disposed) stop(); else stopRecovery = stop; }).catch(() => {});
+  }
   if (users === 1) {
+    needsFreshList = true;
     timer = setInterval(tick, 1000);
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('online', onVisibility);
     window.addEventListener('hongsi-resume', onVisibility);
-    void attendance.load();
+    window.addEventListener('hongsi-pause', pauseWatch);
   }
-  void checkNow();
+  onVisibility();
+  if (users === 1) void attendance.load();
   return () => {
+    disposed = true;
+    stopRecovery?.();
     users--;
     if (users === 0) {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('online', onVisibility);
       window.removeEventListener('hongsi-resume', onVisibility);
+      window.removeEventListener('hongsi-pause', pauseWatch);
     }
   };
 }
@@ -271,10 +288,21 @@ export function checkNow(): Promise<void> {
   pendingCheck = task;
   return task;
 }
+let needsFreshList = true;
+function pauseWatch() {
+  needsFreshList = true;
+}
 function onVisibility() {
-  if (document.visibilityState === 'visible') {
-    void checkNow();
+  if (document.visibilityState !== 'visible') {
+    pauseWatch();
+    return;
   }
+  if (needsFreshList) {
+    needsFreshList = false;
+    classWatch.activeSince = Date.now();
+    void lectures.refresh();
+  }
+  void checkNow();
 }
 function tick(automatic = true) {
   const now = Date.now();

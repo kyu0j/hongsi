@@ -39,25 +39,29 @@ func installWidgetLaunch() {
 final class HongsiIOSPlugin: Plugin, QLPreviewControllerDataSource, QLPreviewControllerDelegate, UIDocumentPickerDelegate {
     private var previewURL: URL?
     private var scopedPreviewURL: URL?
-    private var location: HongsiLocation?
+    @MainActor private lazy var location = HongsiLocation(useLastKnown: true)
     private var mapTracking: MapTracking?
-    private var attendanceTracking: MapTracking?
     private var updater: HongsiAppUpdate?
     private weak var studentCardWebView: WKWebView?
 
     @objc override func load(webview: WKWebView) {
         studentCardWebView = webview
+        Task { @MainActor in if UIApplication.shared.applicationState == .active { location.prepare() } }
+        NotificationCenter.default.addObserver(self, selector: #selector(attendanceBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(studentCardPause), name: UIApplication.willResignActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(studentCardResume), name: UIApplication.didBecomeActiveNotification, object: nil)
     }
     deinit { NotificationCenter.default.removeObserver(self) }
 
+    @objc private func attendanceBackground() {
+        Task { @MainActor in location.cancel() }
+    }
     @objc private func studentCardPause() {
-        Task { @MainActor in mapTracking?.pause(); attendanceTracking?.stop() }
+        Task { @MainActor in mapTracking?.pause() }
         studentCardWebView?.evaluateJavaScript("window.dispatchEvent(new Event('hongsi-pause'))", completionHandler: nil)
     }
     @objc private func studentCardResume() {
-        Task { @MainActor in mapTracking?.resume() }
+        Task { @MainActor in mapTracking?.resume(); location.prepare() }
         studentCardWebView?.evaluateJavaScript("window.dispatchEvent(new Event('hongsi-resume'))", completionHandler: nil)
     }
     @objc func studentCardContext(_ invoke: Invoke) {
@@ -120,22 +124,20 @@ final class HongsiIOSPlugin: Plugin, QLPreviewControllerDataSource, QLPreviewCon
         Task { @MainActor in
             do {
                 let action = try invoke.parseArgs(ValueArgs.self).value
-                if location == nil { location = HongsiLocation() }
                 if action == "settings" {
                     guard let url = URL(string: UIApplication.openSettingsURLString), await UIApplication.shared.open(url) else {
                         invoke.reject("기기 설정을 열지 못했어요."); return
                     }
                 }
-                let permission = action == "request" || action == "precise" ? try await location!.requestPermission() : location!.permission
-                invoke.resolve(["permission": permission, "precise": location!.precise])
+                let permission = action == "request" || action == "precise" ? try await location.requestPermission() : location.permission
+                invoke.resolve(["permission": permission, "precise": location.precise])
             } catch { invoke.reject(error.localizedDescription) }
         }
     }
     @objc func currentLocation(_ invoke: Invoke) {
         Task { @MainActor in
-            if location == nil { location = HongsiLocation() }
             do {
-                let result = try await location!.locate(requestPermission: true)
+                let result = try await location.locate(requestPermission: true)
                 invoke.resolve(["latitude": result.coordinate.latitude, "longitude": result.coordinate.longitude, "accuracy": result.horizontalAccuracy])
             } catch { invoke.reject(error.localizedDescription) }
         }
@@ -156,22 +158,6 @@ final class HongsiIOSPlugin: Plugin, QLPreviewControllerDataSource, QLPreviewCon
                 default: invoke.reject("위치 요청을 확인해 주세요."); return
                 }
                 invoke.resolve(["headingAvailable": available])
-            } catch { invoke.reject(error.localizedDescription) }
-        }
-    }
-    @objc func attendanceLocation(_ invoke: Invoke) {
-        Task { @MainActor in
-            do {
-                let args = try invoke.parseArgs(MapTrackingArgs.self)
-                switch args.action {
-                case "start":
-                    guard let events = args.events else { invoke.reject("위치 요청을 확인해 주세요."); return }
-                    if attendanceTracking == nil { attendanceTracking = MapTracking() }
-                    attendanceTracking!.start(events)
-                case "stop": attendanceTracking?.stop()
-                default: invoke.reject("위치 요청을 확인해 주세요."); return
-                }
-                invoke.resolve()
             } catch { invoke.reject(error.localizedDescription) }
         }
     }

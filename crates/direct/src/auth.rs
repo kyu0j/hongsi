@@ -203,6 +203,10 @@ impl Direct {
 
     pub(super) async fn me(&self) -> R<Value> {
         let s = self.current().await?;
+        let attendance_school = Arc::clone(&s);
+        tokio::spawn(async move {
+            let _ = Self::lectures(&attendance_school).await;
+        });
         let p = s.session.profile().await?;
         Ok(json!({
             "profile": { "name": p.name, "hasPicture": p.has_picture, "studentId": s.student_id, "department": p.department },

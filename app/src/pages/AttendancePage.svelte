@@ -38,7 +38,6 @@
   }
 
   onMount(() => {
-    attendance.load();
     calendar.load();
     timetable.load();
   });

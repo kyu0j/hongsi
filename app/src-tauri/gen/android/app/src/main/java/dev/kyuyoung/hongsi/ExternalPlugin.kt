@@ -49,9 +49,20 @@ internal object ExternalIntents {
 ])
 class ExternalPlugin(private val host: Activity) : Plugin(host) {
     private val tracking = lazy { MapTracking(host) }
-    override fun onPause(activity: AppCompatActivity) { if (tracking.isInitialized()) tracking.value.pause() }
-    override fun onResume(activity: AppCompatActivity) { if (tracking.isInitialized()) tracking.value.resume() }
-    override fun onDestroy(activity: AppCompatActivity) { if (tracking.isInitialized()) tracking.value.stop() }
+    private val attendanceLocation get() = (host as MainActivity).attendanceLocation
+    private var foreground = true
+    override fun onPause(activity: AppCompatActivity) {
+        foreground = false
+        if (tracking.isInitialized()) tracking.value.pause()
+    }
+    override fun onResume(activity: AppCompatActivity) {
+        foreground = true
+        if (tracking.isInitialized()) tracking.value.resume()
+    }
+    override fun onDestroy(activity: AppCompatActivity) {
+        foreground = false
+        if (tracking.isInitialized()) tracking.value.stop()
+    }
     private fun locationPermissionState(): String {
         if (ContextCompat.checkSelfPermission(host, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(host, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) return "granted"
@@ -64,7 +75,7 @@ class ExternalPlugin(private val host: Activity) : Plugin(host) {
                 when (action) {
                     "settings" -> host.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${host.packageName}".toUri()))
                     "request", "precise" -> if (locationPermissionState() == "default" || (action == "precise" && ContextCompat.checkSelfPermission(host, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
-                        requestPermissionForAlias("location", invoke, "locationPermissionResult")
+                        requestPermissionForAlias("location", invoke, "locationPermissionGranted")
                         return@runOnUiThread
                     }
                 }
@@ -73,9 +84,21 @@ class ExternalPlugin(private val host: Activity) : Plugin(host) {
         }
     }
     @PermissionCallback
+    private fun locationPermissionGranted(invoke: Invoke) {
+        if (foreground && locationPermissionState() == "granted") attendanceLocation.locate()
+        locationPermissionResult(invoke)
+    }
     private fun locationPermissionResult(invoke: Invoke) {
         invoke.resolve(JSObject().put("permission", locationPermissionState())
             .put("precise", ContextCompat.checkSelfPermission(host, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED))
+    }
+    @Command fun attendancePosition(invoke: Invoke) {
+        host.runOnUiThread {
+            when {
+                !foreground -> invoke.reject("위치를 찾지 못했어요.")
+                else -> attendanceLocation.locate(invoke)
+            }
+        }
     }
     @Command fun mapTracking(invoke: Invoke) {
         val args = invoke.parseArgs(MapTrackingArgs::class.java)

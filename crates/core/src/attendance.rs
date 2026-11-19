@@ -1,8 +1,11 @@
 pub(crate) mod cyber;
 
+use std::{future::Future, time::Instant};
+
 use regex::Regex;
-use reqwest::header::{ORIGIN, REFERER};
+use reqwest::{cookie::CookieStore, header::{ORIGIN, REFERER}};
 use scraper::Html;
+use tokio::sync::Mutex;
 
 use crate::models::{
     ActiveLecture, ActiveLectures, AttendanceCourse, AttendanceMark, AttendanceReceipt, AttendanceSubmission, AttendanceSummary,
@@ -13,50 +16,100 @@ use crate::{CoreError, Result, SchoolSession};
 
 use hongsi_config::ATTENDANCE_URL as AT;
 
+pub(crate) struct AttendancePage {
+    requested_at: Instant,
+    received_at: Instant,
+    body: String,
+}
+
+impl AttendancePage {
+    fn fresh_for(&self, requested_at: Instant, for_submission: bool) -> bool {
+        let at = if for_submission { self.requested_at } else { self.received_at };
+        at >= requested_at
+    }
+}
+
 impl SchoolSession {
-    async fn ensure_attendance(&self) -> Result<Option<String>> {
-        let mut initial_body = None;
+    async fn initialize_attendance(&self) -> Result<String> {
+        let origin = reqwest::Url::parse(AT.as_str()).expect("출결 주소");
+        let has_session = self.cookie_jar.cookies(&origin).and_then(|header| header.to_str().ok().map(|value| value.contains("JSESSIONID="))).unwrap_or(false);
+        if has_session {
+            match self.get_text(&format!("{AT}/index.jsp"), None).await {
+                Ok(body) if Html::parse_document(&body).select(&sel("table")).next().is_some() => return Ok(body),
+                Ok(_) | Err(CoreError::SessionExpired) => {}
+                Err(error) => return Err(error),
+            }
+        }
+        self.reconnect_attendance().await
+    }
+
+    async fn reconnect_attendance(&self) -> Result<String> {
+        self.client
+            .get(format!("{AT}/login.jsp"))
+            .header(REFERER, format!("{}/", hongsi_config::PORTAL_URL))
+            .send()
+            .await?
+            .error_for_status()?;
+        let index = format!("{AT}/index.jsp");
+        let login = format!("{AT}/login.jsp");
+        let body = self.get_text(&index, Some(&login)).await?;
+        if Html::parse_document(&body).select(&sel("table")).next().is_some() {
+            return Ok(body);
+        }
+        self.get_text(&index, Some(&login)).await
+    }
+
+    async fn ensure_attendance(&self) -> Result<&Mutex<AttendancePage>> {
         self.attendance_ready
             .get_or_try_init(|| async {
-                use reqwest::cookie::CookieStore;
-                let origin = reqwest::Url::parse(AT.as_str()).expect("출결 주소");
-                let has_session = self.cookie_jar.cookies(&origin).and_then(|header| header.to_str().ok().map(|value| value.contains("JSESSIONID="))).unwrap_or(false);
-                if has_session {
-                    match self.get_text(&format!("{AT}/index.jsp"), None).await {
-                        Ok(body) if Html::parse_document(&body).select(&sel("table")).next().is_some() => {
-                            initial_body = Some(body);
-                            return Ok(());
-                        }
-                        Ok(_) | Err(CoreError::SessionExpired) => {}
-                        Err(error) => return Err(error),
-                    }
-                }
-                self.client
-                    .get(format!("{AT}/login.jsp"))
-                    .header(REFERER, format!("{}/", hongsi_config::PORTAL_URL))
-                    .send()
-                    .await?;
-                let body = self.get_text(&format!("{AT}/index.jsp"), Some(&format!("{AT}/login.jsp"))).await?;
-                if looks_like_login(&body) {
-                    return Err(CoreError::SessionExpired);
-                }
-                initial_body = Some(body);
-                Ok::<(), CoreError>(())
+                let requested_at = Instant::now();
+                let body = self.initialize_attendance().await?;
+                Ok(Mutex::new(AttendancePage { requested_at, received_at: Instant::now(), body }))
             })
-            .await?;
-        Ok(initial_body)
+            .await
+    }
+
+    async fn recovered_attendance_page(&self, failed_request_at: Instant, for_submission: bool) -> Result<String> {
+        let mut page = self.ensure_attendance().await?.lock().await;
+        if !page.fresh_for(failed_request_at, for_submission) {
+            let requested_at = Instant::now();
+            let body = self.reconnect_attendance().await?;
+            *page = AttendancePage { requested_at, received_at: Instant::now(), body };
+        }
+        Ok(page.body.clone())
+    }
+
+    async fn read_attendance_page<F, Fut>(&self, fetch: F) -> Result<String>
+    where
+        F: Fn() -> Fut,
+        Fut: Future<Output = Result<String>>,
+    {
+        let requested_at = Instant::now();
+        match fetch().await {
+            Err(CoreError::SessionExpired) => {
+                self.recovered_attendance_page(requested_at, false).await?;
+                fetch().await
+            }
+            result => result,
+        }
     }
 
     async fn active_rows(
         &self,
+        for_submission: bool,
     ) -> Result<(Vec<(ActiveLecture, Vec<(String, String)>)>, Option<String>)> {
-        let body = match self.ensure_attendance().await? {
-            Some(body) => body,
-            None => self.get_text(&format!("{AT}/index.jsp"), Some(&format!("{AT}/login.jsp"))).await?,
+        let requested_at = Instant::now();
+        let initial = {
+            let page = self.ensure_attendance().await?.lock().await;
+            page.fresh_for(requested_at, for_submission).then(|| page.body.clone())
         };
-        if looks_like_login(&body) {
-            return Err(CoreError::SessionExpired);
-        }
+        let body = match initial {
+            Some(body) => body,
+            None => match self.get_text(&format!("{AT}/index.jsp"), Some(&format!("{AT}/login.jsp"))).await {
+                Err(CoreError::SessionExpired) => self.recovered_attendance_page(requested_at, for_submission).await?,
+                result => result?,
+            },
+        };
         let doc = Html::parse_document(&body);
         let table = doc
             .select(&sel("table"))
@@ -96,7 +149,7 @@ impl SchoolSession {
     }
 
     pub async fn active_lectures(&self) -> Result<ActiveLectures> {
-        let (rows, message) = self.active_rows().await?;
+        let (rows, message) = self.active_rows(false).await?;
         Ok(ActiveLectures {
             items: rows.into_iter().map(|(l, _)| l).collect(),
             message,
@@ -110,7 +163,7 @@ impl SchoolSession {
         latitude: f64,
         longitude: f64,
     ) -> Result<AttendanceSubmission> {
-        let (rows, _) = self.active_rows().await?;
+        let (rows, _) = self.active_rows(true).await?;
         let (lecture, mut form) = rows
             .into_iter()
             .find(|(lecture, _)| lecture.key == lecture_key)
@@ -144,7 +197,7 @@ impl SchoolSession {
     }
 
     pub async fn attendance_status(&self) -> Result<Vec<AttendanceCourse>> {
-        let _ = self.ensure_attendance().await?;
+        self.ensure_attendance().await?;
         let (forms, enrolled) = futures::try_join!(self.fetch_attendance_forms(), self.enrolled_courses())?;
         let classroom = if enrolled.iter().any(|c| c.cyber) { self.all_courses().await? } else { vec![] };
         let mut courses = Vec::new();
@@ -160,7 +213,7 @@ impl SchoolSession {
     }
 
     pub async fn attendance_course(&self, code: &str) -> Result<AttendanceCourse> {
-        let _ = self.ensure_attendance().await?;
+        self.ensure_attendance().await?;
         let (forms, enrolled) = futures::try_join!(
             self.attendance_forms.get_or_try_init(|| self.fetch_attendance_forms()),
             self.enrolled_courses(),
@@ -175,8 +228,9 @@ impl SchoolSession {
     }
 
     async fn offline_course_status(&self, data: &[(String, String)]) -> Result<AttendanceCourse> {
-        let body = self.post_form_text(&format!("{AT}/stud05.jsp"), data, Some(&format!("{AT}/stud04.jsp"))).await?;
-        if looks_like_login(&body) { return Err(CoreError::SessionExpired); }
+        let url = format!("{AT}/stud05.jsp");
+        let referer = format!("{AT}/stud04.jsp");
+        let body = self.read_attendance_page(|| self.post_form_text(&url, data, Some(&referer))).await?;
         Ok(parse_course_status(&body, data))
     }
 
@@ -199,12 +253,9 @@ impl SchoolSession {
     }
 
     async fn fetch_attendance_forms(&self) -> Result<Vec<Vec<(String, String)>>> {
-        let list = self
-            .get_text(&format!("{AT}/stud04.jsp"), Some(&format!("{AT}/stud01.jsp")))
-            .await?;
-        if looks_like_login(&list) {
-            return Err(CoreError::SessionExpired);
-        }
+        let url = format!("{AT}/stud04.jsp");
+        let referer = format!("{AT}/stud01.jsp");
+        let list = self.read_attendance_page(|| self.get_text(&url, Some(&referer))).await?;
         let doc = Html::parse_document(&list);
         if doc.select(&sel("table")).next().is_none() {
             return Err(CoreError::Parse("출결 과목 목록".into()));

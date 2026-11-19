@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { flushSync, onMount, untrack } from 'svelte';
+  import { flushSync, untrack } from 'svelte';
   import { ApiError, api } from '../../shared/api/api';
   import { attendanceFailureMessage } from '../../shared/api/api-error';
   import { currentLocation } from '../../platform/location';
-  import { POLL_MS, afterSubmit, checkNow, classWatch, isAttended, lectureMark, lectureSession, classScheduleLabel, markFor, markTitle, nextClass, todaySessions, useClassWatch } from './classwatch.svelte';
+  import { POLL_MS, afterSubmit, checkNow, classWatch, isAttended, lectureMark, lectureSession, classScheduleLabel, markFor, markTitle, nextClass, todaySessions } from './classwatch.svelte';
   import { sentenceLines } from '../../shared/utils/format';
   import { errorText, writeBlocked } from '../../shared/api/net.svelte';
   import { attendance, attendanceReceipts, lectures, timetable } from './attendance-resources.svelte';
+  import { isAndroid } from '../../platform/env';
   import { preparedAttendanceLocation } from './attendance-location.svelte';
   import { handleAuthError } from '../auth/auth-state.svelte';
   import { toast } from '../../shared/state/ui.svelte';
@@ -17,11 +18,6 @@
   import Sheet from '../../shared/ui/Sheet.svelte';
 
   let { showLabel = true }: { showLabel?: boolean } = $props();
-
-  onMount(() => {
-    timetable.load();
-    return useClassWatch();
-  });
 
   let target = $state<ActiveLecture | null>(null);
   let open = $state(false);
@@ -44,7 +40,8 @@
   const submittedMark = $derived(target ? lectureMark(target) : null);
   const submitted = $derived(isAttended(submittedMark));
 
-  const openList = $derived(lectures.at > classWatch.now - 10 * 60_000 ? (lectures.data?.items ?? []) : []);
+  const openList = $derived(!lectures.error && lectures.requestedAt >= classWatch.activeSince
+    && lectures.at > classWatch.now - 10 * 60_000 ? (lectures.data?.items ?? []) : []);
   const lecture = $derived(openList.find((l) => !isAttended(lectureMark(l))) ?? openList[0] ?? null);
   const current = $derived(classWatch.current);
   const next = $derived(nextClass(classWatch.now));
@@ -94,7 +91,7 @@
     geo = { state: 'finding' };
     try {
       const p = await currentLocation();
-      if (request === geoRequest) geo = { state: 'ok', lat: p.latitude, lon: p.longitude, acc: Math.round(p.accuracy) };
+      if (request === geoRequest) geo = { state: 'ok', lat: p.latitude, lon: p.longitude, acc: p.accuracy == null ? undefined : Math.round(p.accuracy) };
     } catch (e) {
       if (request === geoRequest) geo = { state: 'error', msg: e instanceof Error ? e.message : typeof e === 'string' ? e : '위치를 찾지 못했어요.' };
     }
@@ -102,13 +99,15 @@
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
-    if (!target || busy || submitted || geo.state !== 'ok' || !code.trim()) return;
+    if (!target || busy || submitted || geo.state !== 'ok' || !code.trim() || (isAndroid && document.hidden)) return;
     if (writeBlocked('school', '출결할')) return;
+    const lecture = target;
+    const entered = code.trim();
     result = '';
     busy = true;
     try {
-      const prepared = preparedAttendanceLocation(target);
-      const res = await api.submitAttendance(target.key, code.trim(), prepared?.latitude ?? geo.lat!, prepared?.longitude ?? geo.lon!);
+      const prepared = preparedAttendanceLocation(lecture);
+      const res = await api.submitAttendance(lecture.key, entered, prepared?.latitude ?? geo.lat!, prepared?.longitude ?? geo.lon!);
       const confirmed = afterSubmit(res);
       if (confirmed) {
         open = false;
@@ -195,7 +194,7 @@
       <Icon name="pin" size={18} />
       <span class="geo-text">
         {#if geo.state === 'finding'}현재 위치를 확인하는 중…
-        {:else if geo.state === 'ok'}현재 위치 확인됨 (오차 약 {geo.acc}m)
+        {:else if geo.state === 'ok'}위치 확인됨{#if geo.acc !== undefined} (오차 약 {geo.acc}m){/if}
         {:else if geo.state === 'error'}{geo.msg}
         {:else}위치 확인 전{/if}
       </span>
