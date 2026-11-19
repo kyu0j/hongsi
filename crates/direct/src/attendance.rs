@@ -1,7 +1,6 @@
 use std::time::{Duration, Instant};
 
 use hongsi_core::models::ActiveLectures;
-use reqwest::Method;
 use serde_json::{json, Value};
 
 use crate::{cached, Direct, Reply, School, R};
@@ -46,17 +45,7 @@ impl Direct {
         }
         *s.lectures.lock().await = None;
         s.courses.lock().await.clear();
-        let synced = if let Some(receipt) = &submission.receipt {
-            let body = json!({"receipt":receipt,"account":s.student_id});
-            tokio::time::timeout(
-                Duration::from_secs(3),
-                self.server(&Method::PUT, "/api/attendance/receipts", Some(&body)),
-            )
-            .await
-            .is_ok_and(|response| response.status == 200 && response.body["ok"] == true)
-        } else {
-            true
-        };
+        let synced = submission.receipt.is_none();
         Ok(json!({ "message": submission.message, "receipt": submission.receipt, "synced": synced }))
     }
 

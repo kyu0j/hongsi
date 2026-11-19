@@ -263,8 +263,9 @@ async function shareReceipts() {
     let failed = false;
     for (const entry of pending) {
       try {
-        await api.shareAttendanceReceipt(entry.receipt);
+        const response = await api.shareAttendanceReceipt(entry.receipt);
         if (!isCurrentSession(version)) return;
+        if (response?.ok !== true) { failed = true; continue; }
         entry.synced = true;
         persist();
       } catch (e) {
@@ -364,7 +365,6 @@ export function afterSubmit(submission: AttendanceSubmission) {
   if (!receipt || !validReceipt(receipt)) return false;
   classWatch.receipts = [...classWatch.receipts.filter((entry) => entry.receipt.lecture.key !== receipt.lecture.key && validReceipt(entry.receipt)), { receipt, synced: submission.synced }];
   persist();
-  classWatch.shareError = submission.synced ? '' : '출석은 확인했지만 다른 기기에 기록을 공유하지 못했어요. 서버에 연결되면 다시 시도할게요.';
   void shareReceipts();
   void syncReceipts();
   const version = sessionVersion(), day = todayKey(), ref = lectureRef(receipt.lecture, receipt.confirmedAt);
