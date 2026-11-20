@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import { SvelteSet } from 'svelte/reactivity';
   import { api } from '../../shared/api/api';
   import { downloadFile, downloads, fileErrorText, fileId } from '../files/download-state.svelte';
   import { calendar } from '../calendar/calendar-resources.svelte';
@@ -21,7 +22,7 @@
   let seen = $state(new Set<string>(readUserData<string[]>('notices-seen', [])));
   let viewing = $state<ClassNotification | null>(null);
   let viewOpen = $state(false);
-  let pending = $state('');
+  const pendingModules = new SvelteSet<number>();
 
   const list = $derived(notices.data ?? []);
   const unread = $derived(list.filter((n) => !seen.has(n.url)).length);
@@ -83,7 +84,8 @@
   }
 
   async function quickDownload(n: ClassNotification, cmid: number) {
-    pending = n.url;
+    if (moduleBusy(cmid)) return;
+    pendingModules.add(cmid);
     try {
       const m = await api.module(cmid);
       if (m.files.length === 1) await downloadFile({ kind: 'module', cmid, index: 0 }, m.files[0].name, n.course);
@@ -94,7 +96,7 @@
         view(n);
       }
     } finally {
-      pending = '';
+      pendingModules.delete(cmid);
     }
   }
 
@@ -117,13 +119,13 @@
     const mod = /\/mod\/(ubfile|resource|folder|url)\/view\.php\?id=(\d+)/.exec(n.url);
     if (!mod) return;
     e.preventDefault();
-    if (pending) return;
     if (mod[1] === 'ubfile' || mod[1] === 'resource') void quickDownload(n, Number(mod[2]));
     else view(n);
   }
 
+  const moduleBusy = (cmid: number) => pendingModules.has(cmid) || downloads.busy.has(fileId({ kind: 'module', cmid, index: 0 }));
   const busyFor = (n: ClassNotification) =>
-    pending === n.url || downloads.busy === fileId({ kind: 'module', cmid: Number(/[?&]id=(\d+)/.exec(n.url)?.[1] ?? 0), index: 0 });
+    (n.kind === 'ubfile' || n.kind === 'resource') && moduleBusy(Number(/[?&]id=(\d+)/.exec(n.url)?.[1]));
 
   function markSeen(urls = list.map((n) => n.url)) {
     seen = new Set([...urls, ...seen].slice(0, 300));

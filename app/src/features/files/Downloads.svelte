@@ -1,8 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { isApp } from '../../shared/api/api';
-  import { downloads, fileErrorText, openDownload, refreshDownloads, revealDownload } from './download-state.svelte';
-  import { isCurrentSession, sessionVersion } from '../../shared/state/session';
+  import { downloads, fileErrorText, openDownload, revealDownload, watchDownloadList } from './download-state.svelte';
   import { toastOnce } from '../../shared/state/ui.svelte';
   import { ago } from '../../shared/utils/format';
   import EmptyState from '../../shared/ui/EmptyState.svelte';
@@ -13,6 +11,7 @@
   let visibleCount = $state(PAGE_SIZE);
   let listElement: HTMLUListElement | undefined = $state();
   let moreVisible = $state(false);
+  const visibleRecords = $derived(downloads.list.slice(0, visibleCount));
   const loadingMore = $derived(open && moreVisible && visibleCount < downloads.list.length);
 
   function observeMore(node: HTMLElement) {
@@ -30,38 +29,22 @@
     return () => window.clearTimeout(timer);
   });
 
-  async function show() {
-    const version = sessionVersion();
+  function show() {
     listElement?.closest('.body')?.scrollTo({ top: 0 });
     visibleCount = PAGE_SIZE;
     open = true;
-    try {
-      await refreshDownloads();
-    } catch (error) {
-      if (open && isCurrentSession(version)) toastOnce(fileErrorText(error, '파일을 확인하지 못했어요.'), 'error');
-    }
   }
 
-  onMount(() => {
-    if (!isApp) return;
-    const refresh = () => {
-      if (!document.hidden) void refreshDownloads().catch(() => {});
-    };
-    refresh();
-    window.addEventListener('focus', refresh);
-    document.addEventListener('visibilitychange', refresh);
-    return () => {
-      window.removeEventListener('focus', refresh);
-      document.removeEventListener('visibilitychange', refresh);
-    };
-  });
+  function checkError(error: unknown) {
+    if (open) toastOnce(fileErrorText(error, '파일을 확인하지 못했어요.'), 'error');
+  }
 </script>
 
 <button class="icon-btn press-feedback" onclick={show} aria-label="받은 파일" title="받은 파일"><Icon name="inbox" size={23} /></button>
 <Sheet bind:open title="받은 파일">
   {#if downloads.list.length}
-    <ul class="files" bind:this={listElement}>
-      {#each downloads.list.slice(0, visibleCount) as d, i (d.id + d.at)}
+    <ul class="files" bind:this={listElement} use:watchDownloadList={{ rows: () => visibleRecords, onError: checkError }}>
+      {#each visibleRecords as d, i (d.id + d.at)}
         <li class:added={i >= PAGE_SIZE}>
           <span class="ficon"><Icon name="file" size={18} /></span>
           <div class="finfo">

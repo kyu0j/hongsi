@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { downloadFile, downloads, fileId, openDownload, refreshDownloads, savedFile } from './download-state.svelte';
+  import { downloadFile, downloads, fileId, openDownload, savedFile, watchDownloadList } from './download-state.svelte';
   import type { Attachment, FileSource } from '../../shared/types';
   import DownloadIcon from './DownloadIcon.svelte';
 
@@ -14,8 +13,6 @@
     course: string;
   } = $props();
 
-  onMount(() => { void refreshDownloads().catch(() => {}); });
-
   const size = (n: number | null) =>
     n === null ? '' : n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`;
 
@@ -26,10 +23,10 @@
   }
 </script>
 
-<ul class="files">
+<ul class="files" use:watchDownloadList={{ rows: () => files.map((_, index) => savedFile(source(index))) }}>
   {#each files as f, i (i)}
     {@const got = savedFile(source(i))}
-    {@const busy = downloads.busy === fileId(source(i))}
+    {@const busy = downloads.busy.has(fileId(source(i)))}
     <li class:got>
       <button class="fmain" onclick={() => press(i)} disabled={busy} aria-busy={busy} title={got ? '눌러서 바로 열기' : '눌러서 받기'}>
         <span class="fsize">{size(f.size)}</span>

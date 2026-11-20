@@ -1,3 +1,5 @@
+import { untrack } from 'svelte';
+import { SvelteSet } from 'svelte/reactivity';
 import { handleAuthError } from '../auth/auth-state.svelte';
 import { api, isApp, native } from '../../shared/api/api';
 import { connectionError, responseError, responseFormat } from '../../shared/api/api-error';
@@ -11,36 +13,81 @@ const CHECK_BATCH_SIZE = 100;
 const load = () => readUserData<DownloadRecord[]>(KEY, []);
 const recordKey = (record: DownloadRecord) => JSON.stringify([record.id, record.at, record.path]);
 
-export const downloads = $state({ list: load(), busy: '' });
-let checking: { version: number; promise: Promise<void> } | null = null;
+export const downloads = $state({ list: load(), busy: new SvelteSet<string>() });
+const checking = new Set<DownloadRecord>();
 
-export function refreshDownloads(): Promise<void> {
-  if (!isApp || !downloads.list.length) return Promise.resolve();
+async function refreshDownloads(records: DownloadRecord[]) {
   const version = sessionVersion();
-  if (checking?.version === version) return checking.promise;
-  const records = downloads.list.map((record) => ({ ...record }));
-  const promise = (async () => {
-    const checked = new Map<string, SavedDownload | null>();
-    for (let offset = 0; offset < records.length; offset += CHECK_BATCH_SIZE) {
-      if (!isCurrentSession(version)) return;
-      const batch = records.slice(offset, offset + CHECK_BATCH_SIZE);
+  const pending = records.filter((record) => !checking.has(record));
+  pending.forEach((record) => checking.add(record));
+  try {
+    for (let offset = 0; offset < pending.length; offset += CHECK_BATCH_SIZE) {
+      const batch = pending.slice(offset, offset + CHECK_BATCH_SIZE);
       const files = await native.checkDownloads(batch.map((record) => record.path));
       if (!isCurrentSession(version)) return;
       if (files.length !== batch.length) throw new Error('파일을 확인하지 못했어요.');
-      batch.forEach((record, index) => checked.set(recordKey(record), files[index]));
+      const changed = new Map<DownloadRecord, SavedDownload | null>();
+      batch.forEach((record, index) => {
+        const file = files[index];
+        if (!file || file.path !== record.path || file.name !== record.name) changed.set(record, file);
+      });
+      if (!changed.size) continue;
+      downloads.list = downloads.list.flatMap((record) => {
+        const file = changed.get(record);
+        if (file === undefined) return [record];
+        return file ? [{ ...record, path: file.path, name: file.name }] : [];
+      });
+      writeUserData(KEY, downloads.list);
     }
-    downloads.list = downloads.list.flatMap((record) => {
-      const key = recordKey(record);
-      if (!checked.has(key)) return [record];
-      const file = checked.get(key);
-      return file ? [{ ...record, path: file.path, name: file.name }] : [];
+  } finally {
+    pending.forEach((record) => checking.delete(record));
+  }
+}
+
+type DownloadListOptions = { rows: () => (DownloadRecord | undefined)[]; onError?: (error: unknown) => void };
+
+export function watchDownloadList(node: HTMLElement, options: DownloadListOptions) {
+  if (!isApp) return;
+  let listed = new Set<string>();
+  let frame = 0;
+  const active = () => node.isConnected && !document.hidden && !node.closest('[inert], [data-covered]');
+  function check(records: DownloadRecord[]) {
+    const version = sessionVersion();
+    void refreshDownloads(records).catch((error) => {
+      if (active() && isCurrentSession(version)) options.onError?.(error);
     });
-    writeUserData(KEY, downloads.list);
-  })();
-  checking = { version, promise };
-  const finish = () => { if (checking?.promise === promise) checking = null; };
-  void promise.then(finish, finish);
-  return promise;
+  }
+
+  $effect(() => {
+    const records = options.rows().filter((record) => record !== undefined);
+    const added = records.filter((record) => !listed.has(recordKey(record)));
+    listed = new Set(records.map(recordKey));
+    if (active() && added.length) untrack(() => check(added));
+  });
+
+  function resume() {
+    if (frame || !active()) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      if (!active()) return;
+      const viewport = node.closest('.body')?.getBoundingClientRect();
+      const visible = options.rows().flatMap((record, index) => {
+        const bounds = node.children[index]?.getBoundingClientRect();
+        return record && bounds && bounds.bottom > (viewport?.top ?? 0) && bounds.top < (viewport?.bottom ?? window.innerHeight)
+          ? [record] : [];
+      });
+      check(visible);
+    });
+  }
+  document.addEventListener('visibilitychange', resume);
+  window.addEventListener('focus', resume);
+  window.addEventListener('hongsi-resume', resume);
+  return { destroy() {
+    cancelAnimationFrame(frame);
+    document.removeEventListener('visibilitychange', resume);
+    window.removeEventListener('focus', resume);
+    window.removeEventListener('hongsi-resume', resume);
+  } };
 }
 
 function forgetMissing(record: DownloadRecord, error: unknown, version: number) {
@@ -56,8 +103,7 @@ function remember(record: DownloadRecord) {
 
 onSessionChange(() => {
   downloads.list = load();
-  downloads.busy = '';
-  void refreshDownloads().catch(() => {});
+  downloads.busy.clear();
 });
 
 export function fileId(src: FileSource): string {
@@ -118,7 +164,8 @@ export function fileErrorText(error: unknown, fallback: string): string {
 export async function downloadFile(src: FileSource, name: string, course: string): Promise<DownloadRecord | null> {
   const version = sessionVersion();
   const id = fileId(src);
-  downloads.busy = id;
+  if (downloads.busy.has(id)) return null;
+  downloads.busy.add(id);
   try {
     const file = isApp ? await native.download(src, name) : (await browserDownload(src, name), null);
     if (!isCurrentSession(version)) return null;
@@ -134,10 +181,10 @@ export async function downloadFile(src: FileSource, name: string, course: string
     toast('다운로드를 완료했어요', 'success');
     return record;
   } catch (e) {
-    if (!handleAuthError(e)) toastOnce(fileErrorText(e, '다운로드에 실패했어요.'), 'error');
+    if (isCurrentSession(version) && !handleAuthError(e)) toastOnce(fileErrorText(e, '다운로드에 실패했어요.'), 'error');
     return null;
   } finally {
-    if (isCurrentSession(version)) downloads.busy = '';
+    if (isCurrentSession(version)) downloads.busy.delete(id);
   }
 }
 
